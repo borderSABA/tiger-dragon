@@ -1,0 +1,949 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <meta name="theme-color" content="#0b1015">
+  <meta name="description" content="タイガー＆ドラゴン 身内用ブラウザ対戦版">
+  <meta name="robots" content="noindex,nofollow,noarchive">
+  <title>タイガー＆ドラゴン オンライン</title>
+  <style>
+:root {
+  --bg:#080b0f;
+  --panel:#151a20;
+  --panel2:#20262e;
+  --line:#343d47;
+  --text:#f5f1e8;
+  --muted:#aab1ba;
+  --red:#ef4654;
+  --blue:#35bed9;
+  --gold:#f4ca58;
+  --green:#5fd39c;
+  font-family:"Yu Gothic UI","Hiragino Kaku Gothic ProN",system-ui,sans-serif;
+}
+* { box-sizing:border-box; }
+html,body { margin:0; min-height:100%; background:radial-gradient(circle at 50% -10%,#24303d 0,var(--bg) 52%); color:var(--text); }
+button,input,select { font:inherit; }
+button { cursor:pointer; }
+button:disabled { cursor:not-allowed; opacity:.42; }
+#app { min-height:100vh; }
+.connection-banner { position:fixed; top:0; left:0; right:0; z-index:300; text-align:center; padding:8px; background:#b03842; color:white; font-weight:800; }
+.landing { min-height:100vh; display:grid; place-items:center; padding:24px; }
+.hero { width:min(760px,100%); background:#14191fef; border:1px solid var(--line); border-radius:24px; padding:28px; box-shadow:0 24px 75px #000a; }
+.hero.wide { width:min(1080px,100%); }
+.logo { margin:0; text-align:center; font-size:clamp(31px,7vw,64px); line-height:1; letter-spacing:.04em; }
+.logo .tiger { color:var(--blue); text-shadow:0 0 22px #35bed955; }
+.logo .dragon { color:var(--red); text-shadow:0 0 22px #ef465455; }
+.logo .amp { color:#f5f1e8; font-size:.65em; }
+.subtitle { color:var(--muted); text-align:center; margin:12px 0 24px; }
+.name-entry { display:grid; grid-template-columns:auto minmax(180px,360px); justify-content:center; align-items:center; gap:12px; margin-bottom:20px; }
+.name-entry label,.field label { color:var(--muted); font-size:13px; }
+input,select { width:100%; background:#0d1116; color:var(--text); border:1px solid var(--line); border-radius:11px; padding:12px 13px; outline:none; }
+input:focus,select:focus { border-color:var(--blue); box-shadow:0 0 0 3px #35bed919; }
+.room-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:13px; }
+.room-card { display:grid; gap:10px; padding:16px; background:#181e25; border:1px solid var(--line); border-radius:16px; }
+.room-card.open { border-color:#2d7969; }
+.room-card.busy { opacity:.8; }
+.room-card-head { display:flex; align-items:center; justify-content:space-between; gap:10px; }
+.room-number { font-weight:900; font-size:18px; }
+.room-status { display:inline-block; margin-left:8px; padding:3px 7px; border-radius:999px; font-size:11px; background:#333c46; }
+.room-status.open { background:#174d3e; color:#8cf1c8; }
+.room-status.empty { background:#25313c; color:#c2ced8; }
+.room-status.busy { background:#592b31; color:#ffadb5; }
+.room-members { min-height:24px; color:#e0e4e8; font-size:13px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.room-meta { color:var(--muted); font-size:12px; }
+.landing-actions,.action-row,.modal-actions { display:flex; gap:10px; flex-wrap:wrap; }
+.landing-actions { justify-content:center; margin-top:18px; }
+.btn { border:0; border-radius:11px; padding:11px 16px; color:white; background:#3b444f; font-weight:800; }
+.btn.primary { background:linear-gradient(135deg,#117f96,#36bdd7); }
+.btn.danger { background:#aa3641; }
+.btn.ghost { background:transparent; border:1px solid var(--line); }
+.btn.ghost-danger { background:transparent; border:1px solid #8d3a43; color:#ff9aa3; }
+.btn.compact { padding:7px 10px; font-size:12px; }
+.btn.big { padding:14px 18px; font-size:17px; }
+.small-note { color:var(--muted); font-size:12px; line-height:1.6; }
+.center { text-align:center; }
+.loading { grid-column:1/-1; padding:30px; text-align:center; color:var(--muted); }
+.shell { min-height:100vh; display:grid; grid-template-rows:auto 1fr auto; }
+.topbar { position:sticky; top:0; z-index:20; display:flex; align-items:center; justify-content:space-between; gap:10px; padding:10px 14px; background:#0b0f14ed; border-bottom:1px solid var(--line); backdrop-filter:blur(12px); }
+.room-title { font-weight:900; color:var(--gold); }
+.top-actions { display:flex; align-items:center; gap:7px; flex-wrap:wrap; justify-content:flex-end; }
+.icon-btn { border:1px solid var(--line); background:#171d24; color:var(--text); border-radius:9px; padding:8px 10px; }
+.bgm-control { display:flex; align-items:center; gap:8px; min-width:250px; padding:7px 10px; border:1px solid var(--line); border-radius:11px; background:#10151a; color:var(--muted); font-size:12px; }
+.bgm-control.landing-bgm { width:min(560px,100%); margin:0 auto 20px; justify-content:center; }
+.bgm-control input[type="range"] { width:clamp(90px,16vw,180px); padding:0; border:0; box-shadow:none; accent-color:var(--blue); background:transparent; }
+.bgm-control input[type="range"]:focus { box-shadow:none; }
+.bgm-value { min-width:34px; color:var(--text); font-variant-numeric:tabular-nums; }
+.bgm-track { max-width:180px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.main { width:min(1500px,100%); margin:0 auto; padding:14px; }
+.lobby { width:min(980px,100%); margin:20px auto; display:grid; grid-template-columns:1fr 1fr; gap:14px; align-items:start; }
+.card { background:#161c22ef; border:1px solid var(--line); border-radius:15px; padding:15px; }
+.card h2,.card h3 { margin:0 0 12px; }
+.section-head { display:flex; align-items:center; justify-content:space-between; gap:10px; }
+.player-list,.form-grid { display:grid; gap:9px; }
+.lobby-player,.check-row { display:flex; align-items:center; justify-content:space-between; gap:8px; background:var(--panel2); padding:10px 11px; border-radius:10px; }
+.check-row input { width:auto; }
+.status-dot { width:9px; height:9px; display:inline-block; margin-right:7px; border-radius:50%; background:#69727c; }
+.status-dot.online { background:var(--green); box-shadow:0 0 10px #5fd39c88; }
+.badge { display:inline-flex; margin-left:5px; padding:3px 7px; border-radius:999px; background:#303944; color:#d9dfe5; font-size:10px; vertical-align:middle; }
+.badge.gold { background:#5a4718; color:#ffe28b; }
+.badge.team-a { background:#174b57; color:#8ce7f8; }
+.badge.team-b { background:#632c34; color:#ffadb5; }
+.badge.offline { background:#4d3034; color:#ffadb5; }
+.danger-zone { grid-column:1/-1; border-color:#73333b; }
+.game-layout { display:grid; grid-template-columns:1fr minmax(270px,360px); gap:12px; align-items:start; }
+.table-area { display:grid; gap:12px; }
+.battle-card { background:linear-gradient(135deg,#12313a,#1a4651); border:1px solid #2e7180; border-radius:16px; padding:14px 16px; }
+.battle-card.red { background:linear-gradient(135deg,#39191f,#4e2028); border-color:#813844; }
+.battle-title { font-size:22px; font-weight:1000; }
+.battle-short { margin-top:3px; }
+.battle-detail { margin-top:4px; color:#d9e5e8; font-size:13px; }
+.score-strip { display:flex; justify-content:space-around; gap:14px; padding:12px; background:#171d23; border:1px solid var(--line); border-radius:13px; }
+.score-strip strong { color:var(--gold); font-size:22px; }
+.center-status { min-height:116px; display:grid; place-items:center; text-align:center; background:#10151a; border:1px dashed var(--line); border-radius:16px; padding:14px; }
+.current-attack { display:flex; align-items:center; gap:14px; }
+.turn-message,.action-message { color:var(--gold); font-weight:900; }
+.players-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(270px,1fr)); gap:10px; }
+.player-board { background:#171d23; border:1px solid var(--line); border-radius:15px; padding:12px; overflow:hidden; transition:.2s; }
+.player-board.current { border-color:var(--gold); box-shadow:0 0 0 1px #f4ca5844,0 0 25px #f4ca5818; }
+.player-board.self { background:#1b252d; }
+.player-head { display:flex; justify-content:space-between; align-items:center; gap:8px; margin-bottom:9px; }
+.player-name { font-weight:900; }
+.score { color:var(--gold); font-size:22px; font-weight:1000; white-space:nowrap; }
+.rows { display:grid; gap:7px; }
+.row { min-height:54px; display:flex; align-items:center; gap:5px; padding:6px; border-radius:10px; background:#0e1216; overflow-x:auto; }
+.row-label { width:32px; flex:0 0 32px; color:var(--muted); font-size:10px; writing-mode:vertical-rl; text-align:center; }
+.reveal-line { display:flex; align-items:center; gap:8px; margin-bottom:8px; color:var(--muted); font-size:11px; }
+.tile { width:42px; height:54px; flex:0 0 42px; display:grid; place-items:center; border:0; border-radius:8px; background:linear-gradient(145deg,#fff,#dfe3e5); color:#111418; font-size:24px; font-weight:1000; box-shadow:0 4px 0 #afb4b7,0 6px 9px #0007; position:relative; user-select:none; }
+.tile.red { color:var(--red); }
+.tile.blue { color:var(--blue); }
+.tile.wild { font-size:24px; line-height:.8; }
+.tile.wild small { font-size:9px; }
+.tile.back { background:repeating-linear-gradient(45deg,#34404b 0 6px,#222a32 6px 12px); color:transparent; box-shadow:0 4px 0 #101318,0 6px 9px #0007; }
+.tile.clickable { transition:.12s; }
+.tile.clickable:hover,.tile.clickable:focus { transform:translateY(-7px); outline:2px solid var(--gold); }
+.tile.disabled { filter:grayscale(.75); opacity:.34; }
+.tile.revealed::after { content:"公開"; position:absolute; top:-8px; right:-8px; padding:2px 5px; border-radius:999px; background:var(--gold); color:#2d2307; font-size:9px; }
+.tile.large { width:60px; height:76px; flex-basis:60px; font-size:34px; }
+.hand-zone { position:sticky; bottom:0; z-index:18; background:#0b0f14ef; border-top:1px solid var(--line); backdrop-filter:blur(12px); padding:10px 14px 14px; }
+.hand-head { max-width:1500px; margin:0 auto 7px; display:flex; align-items:center; justify-content:space-between; gap:10px; }
+.hand { max-width:1500px; min-height:86px; margin:auto; display:flex; align-items:end; gap:7px; padding:9px 6px 14px; overflow-x:auto; }
+.hand .tile { width:54px; height:70px; flex-basis:54px; font-size:31px; }
+.hand .tile.wild { font-size:30px; }
+.side-panel { display:grid; gap:12px; position:sticky; top:64px; }
+.log { max-height:330px; display:grid; gap:7px; overflow-y:auto; }
+.log-line { padding-bottom:7px; border-bottom:1px solid #2b333c; color:#d8dde2; font-size:13px; }
+.overlay { position:fixed; inset:0; z-index:60; display:grid; place-items:center; padding:20px; background:#050709dc; backdrop-filter:blur(8px); }
+.modal { width:min(620px,100%); max-height:90vh; overflow-y:auto; background:#171d23; border:1px solid var(--line); border-radius:20px; padding:22px; box-shadow:0 25px 80px #000c; }
+.modal h2 { margin-top:0; }
+.result-overlay { z-index:70; }
+.result-row { display:flex; align-items:center; gap:18px; }
+.result-score { color:var(--gold); font-size:44px; font-weight:1000; }
+.rules { line-height:1.8; color:#dce1e6; }
+.rules h3 { margin-bottom:4px; color:var(--gold); }
+.toast { position:fixed; left:50%; bottom:110px; z-index:500; transform:translate(-50%,20px); opacity:0; pointer-events:none; background:#a83742; color:white; padding:11px 16px; border-radius:11px; box-shadow:0 10px 30px #0009; transition:.2s; }
+.toast.success { background:#287654; }
+.toast.show { opacity:1; transform:translate(-50%,0); }
+#specialLayer { position:relative; z-index:400; }
+.special-cutin { position:fixed; inset:0; z-index:400; display:grid; place-items:center; overflow:hidden; pointer-events:none; animation:cutinFade 1.55s both; }
+.special-cutin.tiger { background:radial-gradient(circle,#3fe0ff55 0,#0b6f8cd9 34%,#03131cf5 72%); }
+.special-cutin.dragon { background:radial-gradient(circle,#ff596855 0,#9e1f31dd 34%,#21050af5 72%); }
+.special-rays { position:absolute; inset:-35%; background:repeating-conic-gradient(from 0deg,transparent 0 8deg,#ffffff20 8deg 10deg,transparent 10deg 19deg); animation:spinRays 4s linear infinite; }
+.special-symbol { position:absolute; font-size:min(52vw,520px); font-weight:1000; opacity:.12; transform:rotate(-8deg); }
+.special-word { position:relative; font-size:clamp(72px,16vw,190px); font-weight:1000; letter-spacing:.08em; text-shadow:0 8px 0 #0007,0 0 28px #fff8; animation:wordBurst 1.2s both; }
+.special-name { position:absolute; margin-top:clamp(145px,28vw,260px); font-size:clamp(24px,5vw,58px); font-weight:1000; letter-spacing:.18em; }
+.special-user { position:absolute; bottom:12%; padding:7px 14px; border:1px solid #ffffff66; border-radius:999px; background:#0007; font-weight:800; }
+@keyframes cutinFade { 0%{opacity:0} 8%{opacity:1} 75%{opacity:1} 100%{opacity:0} }
+@keyframes wordBurst { 0%{transform:scale(.35) rotate(-6deg);opacity:0} 22%{transform:scale(1.18) rotate(2deg);opacity:1} 38%{transform:scale(1) rotate(0)} 100%{transform:scale(1.04)} }
+@keyframes spinRays { to{transform:rotate(360deg)} }
+@media (max-width:900px) {
+  .game-layout { grid-template-columns:1fr; }
+  .side-panel { position:static; grid-template-columns:1fr 1fr; }
+  .lobby { grid-template-columns:1fr; }
+  .danger-zone { grid-column:auto; }
+}
+@media (max-width:650px) {
+  .landing { padding:12px; }
+  .hero { padding:20px 14px; }
+  .room-grid { grid-template-columns:1fr; }
+  .name-entry { grid-template-columns:1fr; }
+  .main { padding:8px; }
+  .players-grid { grid-template-columns:1fr; }
+  .side-panel { grid-template-columns:1fr; }
+  .topbar { font-size:13px; flex-wrap:wrap; }
+  .top-actions { width:100%; justify-content:flex-start; }
+  .bgm-control { flex:1 1 100%; min-width:0; }
+  .bgm-track { max-width:110px; }
+  .tile { width:37px; height:49px; flex-basis:37px; font-size:21px; }
+}
+@media (orientation:portrait) and (max-width:700px) {
+  .shell::before { content:"横向きにすると盤面が見やすくなります"; position:fixed; z-index:250; top:48px; left:50%; transform:translateX(-50%); padding:6px 10px; border-radius:8px; background:#000d; color:var(--gold); font-size:11px; white-space:nowrap; }
+}
+
+  </style>
+</head>
+<body>
+  <div id="app"></div>
+  <div id="specialLayer" aria-live="assertive"></div>
+  <div id="toast" class="toast" role="status"></div>
+
+  <script>
+    // ============================================================
+    // ここだけ書き換えます。
+    // Cloudflare Workersへ公開したときに表示されたURLを貼り付けてください。
+    // 例: https://tiger-dragon-server.saba.workers.dev
+    // ============================================================
+    window.TD_SERVER_URL = 'https://tiger-dragon-server.naitoryo7110.workers.dev';
+  </script>
+
+  <script>
+(() => {
+  'use strict';
+
+  const normalizeBaseUrl = (value) => String(value || '').trim().replace(/\/$/, '');
+  const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+  class TigerDragonSocket {
+    constructor(baseUrl) {
+      this.baseUrl = normalizeBaseUrl(baseUrl);
+      this.ws = null;
+      this.roomId = null;
+      this.handlers = new Map();
+      this.pending = new Map();
+      this.requestNo = 0;
+      this.manualClose = false;
+      this.connecting = null;
+      this.reconnectNo = 0;
+    }
+
+    on(event, handler) {
+      const list = this.handlers.get(event) || [];
+      list.push(handler);
+      this.handlers.set(event, list);
+    }
+
+    fire(event, payload) {
+      for (const handler of this.handlers.get(event) || []) {
+        try { handler(payload); } catch (error) { console.error(error); }
+      }
+    }
+
+    validConfig() {
+      return /^https?:\/\//.test(this.baseUrl) && !this.baseUrl.includes('YOUR-WORKER-NAME');
+    }
+
+    async fetchLobby() {
+      if (!this.validConfig()) throw new Error('config.jsにCloudflare WorkersのURLを設定してください。');
+      const response = await fetch(`${this.baseUrl}/api/lobby`, { cache:'no-store' });
+      if (!response.ok) throw new Error(`部屋情報の取得に失敗しました（${response.status}）。`);
+      const data = await response.json();
+      return data.rooms || [];
+    }
+
+    async refreshLobby() {
+      try {
+        const rooms = await this.fetchLobby();
+        this.fire('lobbyState', rooms);
+      } catch (error) {
+        this.fire('networkError', { message:error.message });
+      }
+    }
+
+    socketUrl(roomId) {
+      const url = new URL(`${this.baseUrl}/api/rooms/${encodeURIComponent(roomId)}/ws`);
+      url.protocol = url.protocol === 'https:' ? 'wss:' : 'ws:';
+      return url.toString();
+    }
+
+    async connect(roomId) {
+      const nextRoom = String(roomId);
+      if (!this.validConfig()) throw new Error('config.jsにCloudflare WorkersのURLを設定してください。');
+      if (this.ws?.readyState === WebSocket.OPEN && this.roomId === nextRoom) return;
+      if (this.connecting && this.roomId === nextRoom) return this.connecting;
+      this.manualClose = false;
+      this.roomId = nextRoom;
+      if (this.ws) {
+        try { this.ws.close(1000, 'switch room'); } catch {}
+      }
+      this.connecting = new Promise((resolve, reject) => {
+        const ws = new WebSocket(this.socketUrl(nextRoom));
+        this.ws = ws;
+        const timeout = setTimeout(() => {
+          try { ws.close(); } catch {}
+          reject(new Error('対戦サーバーへ接続できませんでした。'));
+        }, 10000);
+        ws.addEventListener('open', () => {
+          clearTimeout(timeout);
+          this.connecting = null;
+          this.reconnectNo = 0;
+          this.fire('connect');
+          resolve();
+        }, { once:true });
+        ws.addEventListener('message', (event) => this.handleMessage(event.data));
+        ws.addEventListener('close', () => this.handleClose(ws));
+        ws.addEventListener('error', () => {
+          if (ws.readyState !== WebSocket.OPEN) {
+            clearTimeout(timeout);
+            this.connecting = null;
+            reject(new Error('対戦サーバーとの接続に失敗しました。'));
+          }
+        });
+      });
+      return this.connecting;
+    }
+
+    handleMessage(raw) {
+      let message;
+      try { message = JSON.parse(raw); } catch { return; }
+      if (message.type === 'ack') {
+        const pending = this.pending.get(message.id);
+        if (!pending) return;
+        clearTimeout(pending.timer);
+        this.pending.delete(message.id);
+        pending.ack(message.result);
+        return;
+      }
+      if (message.type === 'event') this.fire(message.event, message.payload);
+    }
+
+    async handleClose(ws) {
+      if (this.ws !== ws) return;
+      this.ws = null;
+      this.connecting = null;
+      for (const pending of this.pending.values()) {
+        clearTimeout(pending.timer);
+        pending.ack({ ok:false, error:'サーバーとの接続が切れました。' });
+      }
+      this.pending.clear();
+      this.fire('disconnect');
+      if (this.manualClose || !this.roomId) return;
+      this.reconnectNo += 1;
+      await sleep(Math.min(5000, 600 * this.reconnectNo));
+      if (!this.manualClose && this.roomId) {
+        this.connect(this.roomId).catch(() => {});
+      }
+    }
+
+    emit(event, payload = {}, ack = () => {}) {
+      const send = async () => {
+        try {
+          if (event === 'joinRoom') await this.connect(payload.roomId);
+          if (!this.ws || this.ws.readyState !== WebSocket.OPEN) throw new Error('対戦サーバーへ接続されていません。');
+          const id = `${Date.now()}-${++this.requestNo}`;
+          const timer = setTimeout(() => {
+            this.pending.delete(id);
+            ack({ ok:false, error:'サーバーから応答がありません。' });
+          }, 12000);
+          this.pending.set(id, { ack, timer });
+          this.ws.send(JSON.stringify({ type:'command', id, event, payload }));
+        } catch (error) {
+          ack({ ok:false, error:error.message || '通信に失敗しました。' });
+        }
+      };
+      send();
+    }
+
+    disconnectRoom() {
+      this.manualClose = true;
+      this.roomId = null;
+      if (this.ws) {
+        try { this.ws.close(1000, 'leave room'); } catch {}
+      }
+      this.ws = null;
+    }
+  }
+
+  window.TigerDragonSocket = TigerDragonSocket;
+})();
+
+  </script>
+
+  <script>
+const socket = new TigerDragonSocket(window.TD_SERVER_URL);
+const app = document.querySelector('#app');
+const toast = document.querySelector('#toast');
+const specialLayer = document.querySelector('#specialLayer');
+
+let rooms = [];
+let state = null;
+let rulesOpen = false;
+let busy = false;
+let name = localStorage.getItem('td:name') || '';
+let lastRoomId = localStorage.getItem('td:lastRoom') || '';
+let lastSpecialId = null;
+let connectionMessage = '';
+
+const BGM_PLAYLIST_URL = './bgm/playlist.txt';
+const bgmAudio = new Audio();
+bgmAudio.preload = 'none';
+let bgmTracks = [];
+let bgmTrackIndex = -1;
+let bgmFailedIndexes = new Set();
+let bgmPlaylistLoaded = false;
+let bgmPlaylistPromise = null;
+let bgmRetryTimer = null;
+let bgmVolume = Number(localStorage.getItem('td:bgmVolume') ?? 0);
+if (!Number.isFinite(bgmVolume)) bgmVolume = 0;
+bgmVolume = Math.max(0, Math.min(100, Math.round(bgmVolume)));
+bgmAudio.volume = bgmVolume / 100;
+
+function trackUrl(line) {
+  const value = line.trim();
+  if (/^https?:\/\//i.test(value)) return value;
+  return new URL(value.includes('/') ? value : `./bgm/${value}`, location.href).toString();
+}
+
+function trackName(url) {
+  if (!url) return '停止中';
+  try { return decodeURIComponent(new URL(url).pathname.split('/').pop() || 'BGM'); }
+  catch { return 'BGM'; }
+}
+
+async function loadBgmPlaylist() {
+  if (bgmPlaylistLoaded) return bgmTracks;
+  if (bgmPlaylistPromise) return bgmPlaylistPromise;
+  bgmPlaylistPromise = fetch(BGM_PLAYLIST_URL, { cache:'no-store' })
+    .then((response) => {
+      if (!response.ok) throw new Error('playlist.txtが見つかりません。');
+      return response.text();
+    })
+    .then((text) => {
+      bgmTracks = [...new Set(text.split(/\r?\n/)
+        .map((line) => line.trim())
+        .filter((line) => line && !line.startsWith('#'))
+        .map(trackUrl))];
+      bgmPlaylistLoaded = true;
+      updateBgmControls();
+      return bgmTracks;
+    })
+    .catch((error) => {
+      console.warn('BGM playlist:', error.message);
+      bgmTracks = [];
+      bgmPlaylistLoaded = true;
+      updateBgmControls();
+      return bgmTracks;
+    });
+  return bgmPlaylistPromise;
+}
+
+function updateBgmControls() {
+  document.querySelectorAll('.bgm-volume').forEach((input) => { input.value = String(bgmVolume); });
+  document.querySelectorAll('.bgm-value').forEach((node) => { node.textContent = `${bgmVolume}%`; });
+  const allFailed = bgmTracks.length > 0 && bgmFailedIndexes.size >= bgmTracks.length;
+  const label = bgmTracks.length
+    ? (allFailed ? '再生できる曲なし' : (bgmTrackIndex >= 0 ? trackName(bgmTracks[bgmTrackIndex]) : (bgmVolume > 0 ? '再生準備中' : '停止中')))
+    : (bgmPlaylistLoaded ? '曲未登録' : '読込中');
+  document.querySelectorAll('.bgm-track').forEach((node) => { node.textContent = label; node.title = label; });
+}
+
+function queueNextBgm() {
+  clearTimeout(bgmRetryTimer);
+  if (bgmVolume <= 0) return;
+  bgmRetryTimer = setTimeout(() => playRandomBgm(), 80);
+}
+
+async function playRandomBgm() {
+  await loadBgmPlaylist();
+  if (bgmVolume <= 0 || !bgmTracks.length) {
+    updateBgmControls();
+    return;
+  }
+  const available = bgmTracks.map((_, index) => index).filter((index) => !bgmFailedIndexes.has(index));
+  if (!available.length) {
+    bgmAudio.pause();
+    bgmTrackIndex = -1;
+    updateBgmControls();
+    return;
+  }
+  const alternatives = available.filter((index) => index !== bgmTrackIndex);
+  const pool = alternatives.length ? alternatives : available;
+  bgmTrackIndex = pool[Math.floor(Math.random() * pool.length)];
+  bgmAudio.src = bgmTracks[bgmTrackIndex];
+  bgmAudio.volume = bgmVolume / 100;
+  updateBgmControls();
+  try {
+    await bgmAudio.play();
+  } catch (error) {
+    if (error?.name !== 'NotAllowedError') {
+      bgmFailedIndexes.add(bgmTrackIndex);
+      bgmTrackIndex = -1;
+      updateBgmControls();
+      queueNextBgm();
+    }
+  }
+}
+
+async function ensureBgmPlaying() {
+  if (bgmVolume <= 0) return;
+  await loadBgmPlaylist();
+  if (!bgmTracks.length) return;
+  bgmAudio.volume = bgmVolume / 100;
+  if (!bgmAudio.src || bgmAudio.ended || bgmTrackIndex < 0) await playRandomBgm();
+  else if (bgmAudio.paused) {
+    try { await bgmAudio.play(); } catch {}
+  }
+  updateBgmControls();
+}
+
+function setBgmVolume(value) {
+  bgmVolume = Math.max(0, Math.min(100, Math.round(Number(value) || 0)));
+  localStorage.setItem('td:bgmVolume', String(bgmVolume));
+  bgmAudio.volume = bgmVolume / 100;
+  if (bgmVolume === 0) bgmAudio.pause();
+  else ensureBgmPlaying();
+  updateBgmControls();
+}
+
+bgmAudio.addEventListener('ended', () => playRandomBgm());
+bgmAudio.addEventListener('error', () => {
+  if (bgmTrackIndex >= 0) bgmFailedIndexes.add(bgmTrackIndex);
+  bgmTrackIndex = -1;
+  updateBgmControls();
+  queueNextBgm();
+});
+document.addEventListener('pointerdown', () => { if (bgmVolume > 0) ensureBgmPlaying(); }, { passive:true });
+loadBgmPlaylist();
+
+const battlefieldOrder = ['field','coast','volcano','dojo','forest','storm','swamp','cave','cliff','fog'];
+const battlefieldNames = {
+  field:'草原の戦い', coast:'浜辺の戦い', volcano:'火山の戦い', dojo:'道場の戦い', forest:'竹林の戦い',
+  storm:'嵐の戦い', swamp:'沼地の戦い', cave:'洞窟の戦い', cliff:'崖の上の戦い', fog:'濃霧の戦い'
+};
+
+function esc(value) {
+  return String(value ?? '').replace(/[&<>'"]/g, (c) => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', "'":'&#39;', '"':'&quot;' }[c]));
+}
+
+function showToast(message, danger = true) {
+  toast.textContent = message;
+  toast.classList.toggle('success', !danger);
+  toast.classList.add('show');
+  clearTimeout(showToast.timer);
+  showToast.timer = setTimeout(() => toast.classList.remove('show'), 2800);
+}
+
+function emit(event, payload = {}, onSuccess = null) {
+  if (busy) return;
+  busy = true;
+  socket.emit(event, payload, (result) => {
+    busy = false;
+    if (!result?.ok) {
+      showToast(result?.error || '操作に失敗しました。');
+      return;
+    }
+    onSuccess?.(result);
+  });
+}
+
+function tokenKey(roomId) { return `td:token:${roomId}`; }
+
+function roomToken(roomId) { return localStorage.getItem(tokenKey(roomId)); }
+
+socket.on('lobbyState', (nextRooms) => {
+  rooms = Array.isArray(nextRooms) ? nextRooms : [];
+  if (!state) {
+    const roomGrid = document.querySelector('.room-grid');
+    if (roomGrid) updateLandingRoomGrid();
+    else render();
+  }
+});
+
+socket.on('state', (next) => {
+  const firstState = !state;
+  state = next;
+  lastRoomId = next.roomId;
+  localStorage.setItem('td:lastRoom', lastRoomId);
+  render();
+  playTick();
+  if (next.specialEvent) {
+    const recent = Date.now() - next.specialEvent.at < 4000;
+    if (firstState && !recent) lastSpecialId = next.specialEvent.id;
+    else showSpecial(next.specialEvent);
+  }
+});
+
+socket.on('leftRoom', ({ roomId }) => {
+  socket.disconnectRoom();
+  localStorage.removeItem(tokenKey(roomId));
+  localStorage.removeItem('td:lastRoom');
+  state = null;
+  lastRoomId = '';
+  lastSpecialId = null;
+  render();
+});
+
+socket.on('removed', ({ message }) => {
+  socket.disconnectRoom();
+  if (state?.roomId) localStorage.removeItem(tokenKey(state.roomId));
+  localStorage.removeItem('td:lastRoom');
+  state = null;
+  lastRoomId = '';
+  showToast(message);
+  render();
+});
+
+socket.on('roomReset', ({ roomId }) => {
+  socket.disconnectRoom();
+  localStorage.removeItem(tokenKey(roomId));
+  localStorage.removeItem('td:lastRoom');
+  state = null;
+  lastRoomId = '';
+  lastSpecialId = null;
+  showToast(`第${roomId}対局室を完全初期化しました。`, false);
+  render();
+});
+
+socket.on('connect', () => {
+  connectionMessage = '';
+  if (lastRoomId && socket.roomId === lastRoomId) {
+    const token = roomToken(lastRoomId);
+    if (token) {
+      socket.emit('joinRoom', { roomId:lastRoomId, name, token }, (result) => {
+        if (!result?.ok) {
+          localStorage.removeItem(tokenKey(lastRoomId));
+          localStorage.removeItem('td:lastRoom');
+          lastRoomId = '';
+          state = null;
+          render();
+        }
+      });
+    }
+  }
+  render();
+});
+
+socket.on('disconnect', () => {
+  if (lastRoomId) connectionMessage = 'サーバーとの接続が切れました。再接続しています。';
+  render();
+});
+
+socket.on('networkError', ({ message }) => {
+  if (!state) connectionMessage = message;
+  render();
+});
+
+let lastLogId = null;
+function playTick() {
+  const current = state?.log?.at(-1)?.id;
+  if (!current || current === lastLogId) return;
+  lastLogId = current;
+  try {
+    const context = new AudioContext();
+    const oscillator = context.createOscillator();
+    const gain = context.createGain();
+    oscillator.frequency.value = 150;
+    gain.gain.setValueAtTime(0.035, context.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, context.currentTime + .065);
+    oscillator.connect(gain).connect(context.destination);
+    oscillator.start();
+    oscillator.stop(context.currentTime + .065);
+  } catch {}
+}
+
+const SPECIAL_SOUND_URLS = {
+  tiger: './sfx/tiger.m4a',
+  dragon: './sfx/dragon.m4a'
+};
+const activeSpecialAudios = new Set();
+
+function playBuiltInSpecialSound(kind) {
+  try {
+    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContextClass) return;
+    const context = new AudioContextClass();
+    const now = context.currentTime;
+    const frequencies = kind === 'tiger' ? [120, 220, 440] : [100, 180, 330];
+    frequencies.forEach((frequency, index) => {
+      const oscillator = context.createOscillator();
+      const gain = context.createGain();
+      oscillator.type = index === 0 ? 'sawtooth' : 'triangle';
+      oscillator.frequency.setValueAtTime(frequency, now + index * .06);
+      gain.gain.setValueAtTime(0.0001, now + index * .06);
+      gain.gain.exponentialRampToValueAtTime(0.09 / (index + 1), now + index * .06 + .025);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + .75);
+      oscillator.connect(gain).connect(context.destination);
+      oscillator.start(now + index * .06);
+      oscillator.stop(now + .8);
+    });
+    setTimeout(() => context.close().catch(() => {}), 1000);
+  } catch {}
+}
+
+function playSpecialSound(kind) {
+  const source = SPECIAL_SOUND_URLS[kind];
+  if (!source) {
+    playBuiltInSpecialSound(kind);
+    return;
+  }
+
+  const audio = new Audio(source);
+  audio.preload = 'auto';
+  audio.volume = 0.9;
+  activeSpecialAudios.add(audio);
+  let fallbackPlayed = false;
+
+  const cleanup = () => activeSpecialAudios.delete(audio);
+  const fallback = () => {
+    cleanup();
+    if (fallbackPlayed) return;
+    fallbackPlayed = true;
+    playBuiltInSpecialSound(kind);
+  };
+
+  audio.addEventListener('ended', cleanup, { once:true });
+  audio.addEventListener('error', fallback, { once:true });
+  audio.play().catch(fallback);
+}
+
+function showSpecial(event) {
+  if (!event || event.id === lastSpecialId) return;
+  lastSpecialId = event.id;
+  const isTiger = event.kind === 'tiger';
+  specialLayer.innerHTML = `<div class="special-cutin ${isTiger ? 'tiger' : 'dragon'}">
+    <div class="special-rays"></div>
+    <div class="special-symbol">${isTiger ? '虎' : '龍'}</div>
+    <div class="special-word">奥義！</div>
+    <div class="special-name">${isTiger ? 'タイガー' : 'ドラゴン'}</div>
+    <div class="special-user">${esc(event.playerName)}の${esc(event.action)}</div>
+  </div>`;
+  playSpecialSound(event.kind);
+  clearTimeout(showSpecial.timer);
+  showSpecial.timer = setTimeout(() => { specialLayer.innerHTML = ''; }, 1550);
+}
+
+function tileHTML(tile, options = {}) {
+  if (!tile) return `<span class="tile back ${options.large ? 'large' : ''}"></span>`;
+  const label = tile.kind === 'number' ? tile.value : tile.kind === 'tiger' ? '虎<br><small>奥義</small>' : '龍<br><small>奥義</small>';
+  const classes = ['tile', tile.color, tile.kind !== 'number' ? 'wild' : '', options.large ? 'large' : '', options.clickable ? 'clickable' : '', options.disabled ? 'disabled' : '', tile.revealed || options.revealed ? 'revealed' : ''].filter(Boolean).join(' ');
+  if (options.clickable) return `<button class="${classes}" data-tile-id="${tile.id}" aria-label="${tile.kind === 'number' ? tile.value : tile.kind}">${label}</button>`;
+  return `<span class="${classes}">${label}</span>`;
+}
+
+function connectionBanner() {
+  return connectionMessage ? `<div class="connection-banner">${esc(connectionMessage)}</div>` : '';
+}
+
+function bgmControlHTML(extraClass = '') {
+  return `<div class="bgm-control ${extraClass}"><span aria-hidden="true">♫</span><label>BGM</label><input class="bgm-volume" type="range" min="0" max="100" step="1" value="${bgmVolume}" aria-label="BGM音量"><span class="bgm-value">${bgmVolume}%</span><span class="bgm-track">${bgmPlaylistLoaded ? (bgmTracks.length ? '停止中' : '曲未登録') : '読込中'}</span></div>`;
+}
+
+function bindJoinRoomButtons() {
+  document.querySelectorAll('.join-room').forEach((button) => button.addEventListener('click', () => joinRoom(button.dataset.roomId)));
+}
+
+function updateLandingRoomGrid() {
+  const roomGrid = document.querySelector('.room-grid');
+  if (!roomGrid) return;
+  roomGrid.innerHTML = rooms.length ? rooms.map(roomCardHTML).join('') : '<div class="loading">部屋情報を取得しています…</div>';
+  bindJoinRoomButtons();
+}
+
+function battlefieldModeNote() {
+  if (state?.settings?.battleMode === 'round') return '各ラウンド開始時に、直前とは別の戦場カードへ変わります。';
+  if (state?.settings?.battleMode === 'fixed') return '指定した戦場カードを、この対戦中ずっと使います。';
+  return '対戦開始時にランダムで選んだ戦場カードを、総合決着まで使います。';
+}
+
+function landingHTML() {
+  const cards = rooms.length ? rooms.map(roomCardHTML).join('') : '<div class="loading">部屋情報を取得しています…</div>';
+  return `${connectionBanner()}<main class="landing"><section class="hero wide">
+    <h1 class="logo"><span class="tiger">TIGER</span><span class="amp"> &amp; </span><span class="dragon">DRAGON</span></h1>
+    <p class="subtitle">身内用ブラウザ対戦版</p>
+    ${bgmControlHTML('landing-bgm')}
+    <div class="name-entry"><label for="nameInput">表示名</label><input id="nameInput" maxlength="16" value="${esc(name)}" placeholder="SABA" autocomplete="nickname" inputmode="text"></div>
+    <div class="room-grid">${cards}</div>
+    <div class="landing-actions"><button class="btn ghost" id="rulesBtn">遊び方</button><button class="btn ghost" id="copyUrlBtn">このゲームのURLをコピー</button></div>
+    <p class="small-note center">空いている対局室を押すだけで参加できます。対局中の部屋には途中参加できません。</p>
+  </section>${rulesOpen ? rulesHTML() : ''}</main>`;
+}
+
+function roomCardHTML(room) {
+  const full = room.playerCount >= room.maxPlayers;
+  const statusClass = room.status === 'empty' ? 'empty' : room.canJoin ? 'open' : 'busy';
+  const names = room.names?.length ? room.names.map(esc).join('・') : '参加者なし';
+  const disabled = !room.canJoin || full;
+  return `<article class="room-card ${statusClass}">
+    <div class="room-card-head"><div><span class="room-number">第${room.id}対局室</span><span class="room-status ${statusClass}">${esc(room.label)}</span></div><strong>${room.playerCount}/${room.maxPlayers}</strong></div>
+    <div class="room-members">${names}</div>
+    <div class="room-meta">人間 ${room.humanCount}人　CPU ${room.cpuCount}人</div>
+    <button class="btn ${disabled ? '' : 'primary'} join-room" data-room-id="${room.id}" ${disabled ? 'disabled' : ''}>${disabled ? (full ? '満員' : '対局中') : 'この部屋に入る'}</button>
+  </article>`;
+}
+
+function topbarHTML() {
+  const self = state.players.find((p) => p.id === state.selfId);
+  return `${connectionBanner()}<header class="topbar"><div><span class="room-title">第${state.roomId}対局室</span>${self?.isHost ? '<span class="badge gold">部屋主</span>' : ''}</div><div class="top-actions">
+    ${bgmControlHTML()}
+    <button class="icon-btn" id="copyUrlBtn">URL</button>
+    <button class="icon-btn" id="rulesBtn">遊び方</button>
+    <button class="icon-btn" id="leaveBtn">退出</button>
+  </div></header>`;
+}
+
+function lobbyHTML() {
+  const self = state.players.find((p) => p.id === state.selfId);
+  const players = state.players.map((p) => `<div class="lobby-player">
+    <div><span class="status-dot ${p.connected ? 'online' : ''}"></span><strong>${esc(p.name)}</strong>${p.isCpu ? '<span class="badge">CPU</span>' : ''}${p.isHost ? '<span class="badge gold">部屋主</span>' : ''}${state.settings.teamMode ? `<span class="badge team-${p.team.toLowerCase()}">チーム${p.team}</span>` : ''}</div>
+    ${state.legal.canEditSettings && !p.isHost ? `<button class="btn danger compact remove-player" data-player-id="${p.id}">外す</button>` : ''}
+  </div>`).join('');
+  const options = battlefieldOrder.map((id) => `<option value="${id}" ${state.settings.fixedBattlefield === id ? 'selected' : ''}>${battlefieldNames[id]}</option>`).join('');
+  return `<div class="shell">${topbarHTML()}<main class="main"><section class="lobby">
+    <div class="card"><div class="section-head"><h2>参加者 ${state.players.length}/5</h2>${state.legal.canAddCpu ? '<button class="btn compact" id="addCpuBtn">CPUを追加</button>' : ''}</div><div class="player-list">${players}</div><p class="small-note">対戦を始めるたびに座席順をランダムに並べ替えます。チーム戦は並べ替え後の1・3番がA、2・4番がBです。</p></div>
+    <div class="card"><h2>ゲーム設定</h2><div class="form-grid">
+      <div class="field"><label>戦場カード</label><select id="battleMode" ${state.legal.canEditSettings ? '' : 'disabled'}><option value="random" ${state.settings.battleMode === 'random' ? 'selected' : ''}>ランダム1枚（総合決着まで固定）</option><option value="round" ${state.settings.battleMode === 'round' ? 'selected' : ''}>各ラウンドごとにランダム変更</option><option value="fixed" ${state.settings.battleMode === 'fixed' ? 'selected' : ''}>指定した戦場で固定</option></select></div>
+      <div class="field"><label>固定する戦場</label><select id="fixedBattle" ${state.legal.canEditSettings && state.settings.battleMode === 'fixed' ? '' : 'disabled'}>${options}</select></div>
+      <div class="field"><label>CPUの強さ</label><select id="cpuLevel" ${state.legal.canEditSettings ? '' : 'disabled'}><option value="easy" ${state.settings.cpuLevel === 'easy' ? 'selected' : ''}>弱い</option><option value="normal" ${state.settings.cpuLevel === 'normal' ? 'selected' : ''}>普通</option><option value="hard" ${state.settings.cpuLevel === 'hard' ? 'selected' : ''}>強い</option></select></div>
+      <label class="check-row"><span>4人用 2対2チーム戦</span><input id="teamMode" type="checkbox" ${state.settings.teamMode ? 'checked' : ''} ${state.legal.canEditSettings ? '' : 'disabled'}></label>
+      ${state.legal.canStart ? '<button class="btn primary big" id="startBtn">対局を始める</button>' : `<p class="small-note">${self?.isHost ? '2人以上そろうと開始できます。' : '部屋主が開始するまでお待ちください。'}</p>`}
+    </div></div>
+    ${hostControlsHTML()}
+  </section></main>${rulesOpen ? rulesHTML() : ''}</div>`;
+}
+
+function hostControlsHTML() {
+  if (!state.legal.canReset) return '';
+  return `<div class="card danger-zone"><h3>部屋管理</h3><p class="small-note">通常リセットは参加者を残して設定画面へ戻します。完全初期化は全員を退出させ、空室に戻します。</p><div class="action-row"><button class="btn danger" id="resetMatchBtn">対局を通常リセット</button><button class="btn ghost-danger" id="hardResetBtn">部屋を完全初期化</button></div></div>`;
+}
+
+function rowTiles(items) {
+  if (!items?.length) return '<span class="small-note">まだありません</span>';
+  return items.map((item) => item.faceDown ? tileHTML(null) : tileHTML(item.tile)).join('');
+}
+
+function playerBoardHTML(player) {
+  const badges = `${player.isCpu ? '<span class="badge">CPU</span>' : ''}${player.isHost ? '<span class="badge gold">主</span>' : ''}${player.isStarter ? '<span class="badge gold">先攻</span>' : ''}${player.team ? `<span class="badge team-${player.team.toLowerCase()}">${player.team}</span>` : ''}${!player.connected ? '<span class="badge offline">切断中</span>' : ''}`;
+  return `<article class="player-board ${player.isCurrent ? 'current' : ''} ${player.id === state.selfId ? 'self' : ''}">
+    <div class="player-head"><div><span class="player-name">${esc(player.name)}</span>${badges}<div class="small-note">手牌 ${player.handCount}枚・1周 ${player.bonusCount}</div></div><div class="score">${player.score}点</div></div>
+    ${state.battlefield?.id === 'cliff' ? `<div class="reveal-line"><span>公開牌</span>${player.revealedTile ? tileHTML(player.revealedTile, { revealed:true }) : player.hasChosenReveal ? '<span class="badge">選択済み</span>' : '<span class="badge offline">未選択</span>'}</div>` : ''}
+    <div class="rows"><div class="row"><span class="row-label">攻め</span>${rowTiles(player.attackRow)}</div><div class="row"><span class="row-label">受け</span>${rowTiles(player.defendRow)}</div></div>
+  </article>`;
+}
+
+function actionText() {
+  if (state.status === 'reveal') return state.legal.action === 'REVEAL' ? '公開する牌を選んでください。1・奥義牌は選べません。' : '他のプレイヤーが公開牌を選んでいます。';
+  if (state.status !== 'playing') return '';
+  if (!state.legal.action) {
+    const current = state.players.find((p) => p.isCurrent);
+    return current ? `${current.name}が考えています。` : '進行を待っています。';
+  }
+  if (state.legal.action === 'ATTACK') return '攻めに使う牌を選んでください。';
+  if (state.legal.action === 'DEFEND') return state.legal.tileIds.length ? '受ける牌を選ぶか、パスしてください。' : '受けられる牌がありません。パスしてください。';
+  if (state.legal.action === 'BONUS') return '裏向きで置く1周ボーナス牌を選んでください。';
+  return '';
+}
+
+function handHTML() {
+  const action = state.legal.action;
+  const legalIds = state.legal.tileIds || [];
+  const tiles = state.hand.map((tile) => tileHTML(tile, { clickable:legalIds.includes(tile.id), disabled:!legalIds.includes(tile.id) })).join('');
+  return `<footer class="hand-zone"><div class="hand-head"><div><strong>あなたの手牌</strong>　<span class="action-message">${esc(actionText())}</span></div>${state.legal.canPass ? '<button class="btn danger" id="passBtn">パス</button>' : ''}</div><div class="hand">${tiles || '<span class="small-note">手牌はありません</span>'}</div></footer>`;
+}
+
+function gameHTML() {
+  const attack = state.currentAttack ? `<div class="current-attack">${tileHTML(state.currentAttack.tile, { large:true })}<div><strong>現在の攻め</strong><div class="small-note">受けるかパス</div></div></div>` : `<div class="turn-message">${esc(actionText())}</div>`;
+  const players = state.players.map(playerBoardHTML).join('');
+  const logs = [...state.log].reverse().map((entry) => `<div class="log-line">${esc(entry.message)}</div>`).join('');
+  const battleRed = ['storm','swamp','cave','cliff','fog'].includes(state.battlefield?.id) ? 'red' : '';
+  return `<div class="shell">${topbarHTML()}<main class="main"><div class="game-layout"><section class="table-area">
+    <div class="battle-card ${battleRed}"><div class="battle-title">${esc(state.battlefield?.name || '')}</div><div class="battle-short">${esc(state.battlefield?.short || '')}</div><div class="battle-detail">${esc(state.battlefield?.detail || '')}／奥義牌上がりは1点・ボーナスなし</div></div>
+    ${state.teamScores ? `<div class="score-strip"><div>チームA <strong>${state.teamScores.A}点</strong></div><div>チームB <strong>${state.teamScores.B}点</strong></div></div>` : ''}
+    <div class="center-status">${attack}</div><div class="players-grid ${state.players.length === 5 ? 'five' : ''}">${players}</div>
+  </section><aside class="side-panel"><div class="card"><h3>第${state.roundNumber}局</h3><div class="action-message">${esc(actionText())}</div><p class="small-note">${esc(battlefieldModeNote())}</p></div><div class="card"><h3>進行ログ</h3><div class="log">${logs}</div></div>${hostControlsHTML()}</aside></div></main>${handHTML()}${resultOverlayHTML()}${rulesOpen ? rulesHTML() : ''}</div>`;
+}
+
+function resultOverlayHTML() {
+  if (!['roundEnd','gameEnd'].includes(state.status)) return '';
+  const result = state.roundResult;
+  const isGameEnd = state.status === 'gameEnd';
+  const title = isGameEnd ? (state.gameResult.type === 'team' ? `チーム${state.gameResult.team} 総合優勝` : `${esc(state.gameResult.winnerName)} 総合優勝`) : `${esc(result.winnerName)}が上がり`;
+  return `<div class="overlay result-overlay"><section class="modal"><h2>${title}</h2><div class="result-row">${tileHTML(result.finalTile, { large:true })}<div><div class="result-score">+${result.score.total}点</div><div>基本 ${result.score.base}点 ＋ ボーナス ${result.score.bonus}点</div></div></div><p>${isGameEnd ? '対戦終了です。' : '次の局では先攻が左隣へ移ります。'}</p><div class="modal-actions">${state.legal.canNextRound ? '<button class="btn primary" id="nextBtn">次の局へ</button>' : ''}${state.legal.canRestart ? '<button class="btn primary" id="restartBtn">同じメンバーで再戦</button>' : ''}${!state.legal.canNextRound && !state.legal.canRestart ? '<span class="small-note">部屋主の操作を待っています。</span>' : ''}</div></section></div>`;
+}
+
+function rulesHTML() {
+  return `<div class="overlay" id="rulesOverlay"><section class="modal rules"><h2>遊び方</h2>
+    <h3>勝利条件</h3><p>手牌を最初に出し切った人が、最後に出した牌と戦場カードに応じて得点します。個人戦は10点、4人チーム戦は15点先取です。</p>
+    <h3>攻めと受け</h3><p>攻め牌と同じ数字で受けると、受けた人が次に攻めます。受けられる場合でもパスできます。</p>
+    <h3>奥義牌</h3><p>タイガーは偶数、ドラゴンは奇数の攻めを受けられます。奥義牌で攻めた場合は同じ色の牌で受けられます。奥義牌が場に出ると全員の画面に演出が表示されます。</p>
+    <h3>1周ボーナス</h3><p>全員がパスして攻めた人まで戻ると、手牌1枚を裏向きで受け列に置き、続けて攻めます。2人戦と奥義牌上がりでは追加点になりません。洞窟では全員分を獲得します。</p>
+    <h3>戦場カード</h3><p>戦場は、総合決着まで固定・各ラウンドごとに変更・任意指定の3種類から選べます。各ラウンド変更では、直前と同じ戦場は連続しません。</p><h3>座席順</h3><p>新しい対戦を始めるたびに参加者の座席順をランダムに並べ替えます。局ごとの先攻は、その座席順で左隣へ移ります。</p>
+    <div class="modal-actions"><button class="btn" id="closeRulesBtn">閉じる</button></div></section></div>`;
+}
+
+function render() {
+  app.innerHTML = state ? (state.status === 'lobby' ? lobbyHTML() : gameHTML()) : landingHTML();
+  bind();
+}
+
+function joinRoom(roomId) {
+  name = document.querySelector('#nameInput')?.value.trim() || name || '名無し';
+  localStorage.setItem('td:name', name);
+  const token = roomToken(roomId);
+  emit('joinRoom', { roomId, name, token }, (result) => {
+    localStorage.setItem(tokenKey(result.roomId), result.token);
+    localStorage.setItem('td:lastRoom', result.roomId);
+  });
+}
+
+function confirmReset(message, eventName) {
+  if (!confirm(message)) return;
+  emit(eventName);
+}
+
+function bind() {
+  bindJoinRoomButtons();
+  document.querySelectorAll('.bgm-volume').forEach((input) => input.addEventListener('input', (event) => setBgmVolume(event.target.value)));
+  updateBgmControls();
+  document.querySelector('#nameInput')?.addEventListener('input', (event) => {
+    name = event.target.value;
+    localStorage.setItem('td:name', name);
+  });
+  document.querySelectorAll('#copyUrlBtn').forEach((button) => button.addEventListener('click', async () => {
+    try {
+      await navigator.clipboard.writeText(location.href.split('#')[0]);
+      showToast('ゲームURLをコピーしました。', false);
+    } catch { showToast('URLをコピーできませんでした。'); }
+  }));
+  document.querySelectorAll('#rulesBtn').forEach((button) => button.addEventListener('click', () => { rulesOpen = true; render(); }));
+  document.querySelector('#closeRulesBtn')?.addEventListener('click', () => { rulesOpen = false; render(); });
+  document.querySelector('#rulesOverlay')?.addEventListener('click', (event) => { if (event.target.id === 'rulesOverlay') { rulesOpen = false; render(); } });
+  document.querySelector('#leaveBtn')?.addEventListener('click', () => {
+    if (!confirm('この部屋から退出しますか？ 対局中は席が切断状態で残ります。')) return;
+    emit('leaveRoom');
+  });
+  document.querySelector('#addCpuBtn')?.addEventListener('click', () => emit('addCpu'));
+  document.querySelectorAll('.remove-player').forEach((button) => button.addEventListener('click', () => emit('removePlayer', { targetId:button.dataset.playerId })));
+  document.querySelector('#battleMode')?.addEventListener('change', (event) => emit('updateSettings', { battleMode:event.target.value }));
+  document.querySelector('#fixedBattle')?.addEventListener('change', (event) => emit('updateSettings', { fixedBattlefield:event.target.value }));
+  document.querySelector('#cpuLevel')?.addEventListener('change', (event) => emit('updateSettings', { cpuLevel:event.target.value }));
+  document.querySelector('#teamMode')?.addEventListener('change', (event) => emit('updateSettings', { teamMode:event.target.checked }));
+  document.querySelector('#startBtn')?.addEventListener('click', () => emit('startGame'));
+  document.querySelector('#passBtn')?.addEventListener('click', () => emit('pass'));
+  document.querySelector('#nextBtn')?.addEventListener('click', () => emit('nextRound'));
+  document.querySelector('#restartBtn')?.addEventListener('click', () => emit('restartGame'));
+  document.querySelectorAll('#resetMatchBtn').forEach((button) => button.addEventListener('click', () => confirmReset('参加者を残して対局を設定画面へ戻します。よろしいですか？', 'resetMatch')));
+  document.querySelectorAll('#hardResetBtn').forEach((button) => button.addEventListener('click', () => confirmReset('全員を退出させ、第' + state.roomId + '対局室を完全な空室へ戻します。よろしいですか？', 'hardReset')));
+  document.querySelectorAll('[data-tile-id]').forEach((button) => button.addEventListener('click', () => {
+    const tileId = button.dataset.tileId;
+    const action = state.legal.action;
+    if (action === 'ATTACK') emit('playAttack', { tileId });
+    else if (action === 'DEFEND') emit('defend', { tileId });
+    else if (action === 'BONUS') emit('claimBonus', { tileId });
+    else if (action === 'REVEAL') emit('revealTile', { tileId });
+  }));
+}
+
+socket.refreshLobby();
+setInterval(() => socket.refreshLobby(), 2000);
+
+if (lastRoomId && roomToken(lastRoomId)) {
+  socket.connect(lastRoomId).catch((error) => {
+    connectionMessage = error.message;
+    render();
+  });
+}
+
+render();
+
+  </script>
+</body>
+</html>
