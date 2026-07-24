@@ -372,6 +372,8 @@ let name = localStorage.getItem('td:name') || '';
 let lastRoomId = localStorage.getItem('td:lastRoom') || '';
 let lastSpecialId = null;
 let connectionMessage = '';
+let settingsDraft = null;
+let settingsSaveTimer = null;
 
 const BGM_PLAYLIST_URL = './bgm/playlist.txt';
 const bgmAudio = new Audio();
@@ -539,6 +541,70 @@ function tokenKey(roomId) { return `td:token:${roomId}`; }
 
 function roomToken(roomId) { return localStorage.getItem(tokenKey(roomId)); }
 
+function settingsEqual(current, draft) {
+  if (!current || !draft) return false;
+  return current.battleMode === draft.battleMode
+    && current.fixedBattlefield === draft.fixedBattlefield
+    && current.cpuLevel === draft.cpuLevel
+    && Boolean(current.teamMode) === Boolean(draft.teamMode);
+}
+
+function effectiveSettings() {
+  return { ...(state?.settings || {}), ...(settingsDraft || {}) };
+}
+
+function readSettingsForm() {
+  const current = effectiveSettings();
+  return {
+    battleMode:document.querySelector('#battleMode')?.value || current.battleMode || 'random',
+    fixedBattlefield:document.querySelector('#fixedBattle')?.value || current.fixedBattlefield || 'field',
+    cpuLevel:document.querySelector('#cpuLevel')?.value || current.cpuLevel || 'normal',
+    teamMode:document.querySelector('#teamMode')?.checked ?? Boolean(current.teamMode)
+  };
+}
+
+function sendSettingsPatch(patch, onSuccess = null) {
+  settingsDraft = { ...effectiveSettings(), ...patch };
+  clearTimeout(settingsSaveTimer);
+  settingsSaveTimer = setTimeout(() => {
+    const sending = { ...settingsDraft };
+    socket.emit('updateSettings', sending, (result) => {
+      if (!result?.ok) {
+        settingsDraft = null;
+        showToast(result?.error || '設定の保存に失敗しました。');
+        render();
+        return;
+      }
+      onSuccess?.(result);
+    });
+  }, 60);
+}
+
+function saveSettingsFromForm() {
+  const patch = readSettingsForm();
+  settingsDraft = patch;
+  const fixed = document.querySelector('#fixedBattle');
+  if (fixed) fixed.disabled = !(state?.legal?.canEditSettings && patch.battleMode === 'fixed');
+  sendSettingsPatch(patch);
+}
+
+function saveSettingsThenStart() {
+  const patch = readSettingsForm();
+  settingsDraft = patch;
+  clearTimeout(settingsSaveTimer);
+  socket.emit('updateSettings', patch, (saved) => {
+    if (!saved?.ok) {
+      settingsDraft = null;
+      showToast(saved?.error || '設定の保存に失敗しました。');
+      render();
+      return;
+    }
+    socket.emit('startGame', {}, (started) => {
+      if (!started?.ok) showToast(started?.error || '対局を開始できませんでした。');
+    });
+  });
+}
+
 socket.on('lobbyState', (nextRooms) => {
   rooms = Array.isArray(nextRooms) ? nextRooms : [];
   if (!state) {
@@ -551,6 +617,7 @@ socket.on('lobbyState', (nextRooms) => {
 socket.on('state', (next) => {
   const firstState = !state;
   state = next;
+  if (settingsDraft && settingsEqual(next.settings, settingsDraft)) settingsDraft = null;
   lastRoomId = next.roomId;
   localStorage.setItem('td:lastRoom', lastRoomId);
   render();
@@ -567,6 +634,7 @@ socket.on('leftRoom', ({ roomId }) => {
   localStorage.removeItem(tokenKey(roomId));
   localStorage.removeItem('td:lastRoom');
   state = null;
+  settingsDraft = null;
   lastRoomId = '';
   lastSpecialId = null;
   render();
@@ -577,6 +645,7 @@ socket.on('removed', ({ message }) => {
   if (state?.roomId) localStorage.removeItem(tokenKey(state.roomId));
   localStorage.removeItem('td:lastRoom');
   state = null;
+  settingsDraft = null;
   lastRoomId = '';
   showToast(message);
   render();
@@ -587,6 +656,7 @@ socket.on('roomReset', ({ roomId }) => {
   localStorage.removeItem(tokenKey(roomId));
   localStorage.removeItem('td:lastRoom');
   state = null;
+  settingsDraft = null;
   lastRoomId = '';
   lastSpecialId = null;
   showToast(`第${roomId}対局室を完全初期化しました。`, false);
@@ -782,18 +852,22 @@ function topbarHTML() {
 
 function lobbyHTML() {
   const self = state.players.find((p) => p.id === state.selfId);
-  const players = state.players.map((p) => `<div class="lobby-player">
-    <div><span class="status-dot ${p.connected ? 'online' : ''}"></span><strong>${esc(p.name)}</strong>${p.isCpu ? '<span class="badge">CPU</span>' : ''}${p.isHost ? '<span class="badge gold">部屋主</span>' : ''}${state.settings.teamMode ? `<span class="badge team-${p.team.toLowerCase()}">チーム${p.team}</span>` : ''}</div>
+  const shownSettings = effectiveSettings();
+  const players = state.players.map((p, index) => {
+    const shownTeam = shownSettings.teamMode ? (p.team || (index % 2 === 0 ? 'A' : 'B')) : null;
+    return `<div class="lobby-player">
+    <div><span class="status-dot ${p.connected ? 'online' : ''}"></span><strong>${esc(p.name)}</strong>${p.isCpu ? '<span class="badge">CPU</span>' : ''}${p.isHost ? '<span class="badge gold">部屋主</span>' : ''}${shownTeam ? `<span class="badge team-${shownTeam.toLowerCase()}">チーム${shownTeam}</span>` : ''}</div>
     ${state.legal.canEditSettings && !p.isHost ? `<button class="btn danger compact remove-player" data-player-id="${p.id}">外す</button>` : ''}
-  </div>`).join('');
-  const options = battlefieldOrder.map((id) => `<option value="${id}" ${state.settings.fixedBattlefield === id ? 'selected' : ''}>${battlefieldNames[id]}</option>`).join('');
+  </div>`;
+  }).join('');
+  const options = battlefieldOrder.map((id) => `<option value="${id}" ${shownSettings.fixedBattlefield === id ? 'selected' : ''}>${battlefieldNames[id]}</option>`).join('');
   return `<div class="shell">${topbarHTML()}<main class="main"><section class="lobby">
     <div class="card"><div class="section-head"><h2>参加者 ${state.players.length}/5</h2>${state.legal.canAddCpu ? '<button class="btn compact" id="addCpuBtn">CPUを追加</button>' : ''}</div><div class="player-list">${players}</div><p class="small-note">対戦を始めるたびに座席順をランダムに並べ替えます。チーム戦は並べ替え後の1・3番がA、2・4番がBです。</p></div>
     <div class="card"><h2>ゲーム設定</h2><div class="form-grid">
-      <div class="field"><label>戦場カード</label><select id="battleMode" ${state.legal.canEditSettings ? '' : 'disabled'}><option value="random" ${state.settings.battleMode === 'random' ? 'selected' : ''}>ランダム1枚（総合決着まで固定）</option><option value="round" ${state.settings.battleMode === 'round' ? 'selected' : ''}>各ラウンドごとにランダム変更</option><option value="fixed" ${state.settings.battleMode === 'fixed' ? 'selected' : ''}>指定した戦場で固定</option></select></div>
-      <div class="field"><label>固定する戦場</label><select id="fixedBattle" ${state.legal.canEditSettings && state.settings.battleMode === 'fixed' ? '' : 'disabled'}>${options}</select></div>
-      <div class="field"><label>CPUの強さ</label><select id="cpuLevel" ${state.legal.canEditSettings ? '' : 'disabled'}><option value="easy" ${state.settings.cpuLevel === 'easy' ? 'selected' : ''}>弱い</option><option value="normal" ${state.settings.cpuLevel === 'normal' ? 'selected' : ''}>普通</option><option value="hard" ${state.settings.cpuLevel === 'hard' ? 'selected' : ''}>強い</option></select></div>
-      <label class="check-row"><span>4人用 2対2チーム戦</span><input id="teamMode" type="checkbox" ${state.settings.teamMode ? 'checked' : ''} ${state.legal.canEditSettings ? '' : 'disabled'}></label>
+      <div class="field"><label>戦場カード</label><select id="battleMode" ${state.legal.canEditSettings ? '' : 'disabled'}><option value="random" ${shownSettings.battleMode === 'random' ? 'selected' : ''}>ランダム1枚（総合決着まで固定）</option><option value="round" ${shownSettings.battleMode === 'round' ? 'selected' : ''}>各ラウンドごとにランダム変更</option><option value="fixed" ${shownSettings.battleMode === 'fixed' ? 'selected' : ''}>指定した戦場で固定</option></select></div>
+      <div class="field"><label>固定する戦場</label><select id="fixedBattle" ${state.legal.canEditSettings && shownSettings.battleMode === 'fixed' ? '' : 'disabled'}>${options}</select></div>
+      <div class="field"><label>CPUの強さ</label><select id="cpuLevel" ${state.legal.canEditSettings ? '' : 'disabled'}><option value="easy" ${shownSettings.cpuLevel === 'easy' ? 'selected' : ''}>弱い</option><option value="normal" ${shownSettings.cpuLevel === 'normal' ? 'selected' : ''}>普通</option><option value="hard" ${shownSettings.cpuLevel === 'hard' ? 'selected' : ''}>強い</option></select></div>
+      <label class="check-row"><span>4人用 2対2チーム戦</span><input id="teamMode" type="checkbox" ${shownSettings.teamMode ? 'checked' : ''} ${state.legal.canEditSettings ? '' : 'disabled'}></label>
       ${state.legal.canStart ? '<button class="btn primary big" id="startBtn">対局を始める</button>' : `<p class="small-note">${self?.isHost ? '2人以上そろうと開始できます。' : '部屋主が開始するまでお待ちください。'}</p>`}
     </div></div>
     ${hostControlsHTML()}
@@ -912,11 +986,11 @@ function bind() {
   });
   document.querySelector('#addCpuBtn')?.addEventListener('click', () => emit('addCpu'));
   document.querySelectorAll('.remove-player').forEach((button) => button.addEventListener('click', () => emit('removePlayer', { targetId:button.dataset.playerId })));
-  document.querySelector('#battleMode')?.addEventListener('change', (event) => emit('updateSettings', { battleMode:event.target.value }));
-  document.querySelector('#fixedBattle')?.addEventListener('change', (event) => emit('updateSettings', { fixedBattlefield:event.target.value }));
-  document.querySelector('#cpuLevel')?.addEventListener('change', (event) => emit('updateSettings', { cpuLevel:event.target.value }));
-  document.querySelector('#teamMode')?.addEventListener('change', (event) => emit('updateSettings', { teamMode:event.target.checked }));
-  document.querySelector('#startBtn')?.addEventListener('click', () => emit('startGame'));
+  document.querySelector('#battleMode')?.addEventListener('change', saveSettingsFromForm);
+  document.querySelector('#fixedBattle')?.addEventListener('change', saveSettingsFromForm);
+  document.querySelector('#cpuLevel')?.addEventListener('change', saveSettingsFromForm);
+  document.querySelector('#teamMode')?.addEventListener('change', saveSettingsFromForm);
+  document.querySelector('#startBtn')?.addEventListener('click', saveSettingsThenStart);
   document.querySelector('#passBtn')?.addEventListener('click', () => emit('pass'));
   document.querySelector('#nextBtn')?.addEventListener('click', () => emit('nextRound'));
   document.querySelector('#restartBtn')?.addEventListener('click', () => emit('restartGame'));
