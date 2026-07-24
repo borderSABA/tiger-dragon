@@ -556,7 +556,7 @@ function effectiveSettings() {
 function readSettingsForm() {
   const current = effectiveSettings();
   return {
-    battleMode:document.querySelector('#battleMode')?.value || current.battleMode || 'random',
+    battleMode:document.querySelector('#battleMode')?.value || current.battleMode || 'round',
     fixedBattlefield:document.querySelector('#fixedBattle')?.value || current.fixedBattlefield || 'field',
     cpuLevel:document.querySelector('#cpuLevel')?.value || current.cpuLevel || 'normal',
     teamMode:document.querySelector('#teamMode')?.checked ?? Boolean(current.teamMode)
@@ -809,9 +809,8 @@ function updateLandingRoomGrid() {
 }
 
 function battlefieldModeNote() {
-  if (state?.settings?.battleMode === 'round') return '各ラウンド開始時に、直前とは別の戦場カードへ変わります。';
   if (state?.settings?.battleMode === 'fixed') return '指定した戦場カードを、この対戦中ずっと使います。';
-  return '対戦開始時にランダムで選んだ戦場カードを、総合決着まで使います。';
+  return 'ラウンドごとに戦場が変わり、10種類を使い切るまで同じ戦場は出ません。再戦でも残りから続きます。';
 }
 
 function landingHTML() {
@@ -864,7 +863,7 @@ function lobbyHTML() {
   return `<div class="shell">${topbarHTML()}<main class="main"><section class="lobby">
     <div class="card"><div class="section-head"><h2>参加者 ${state.players.length}/5</h2>${state.legal.canAddCpu ? '<button class="btn compact" id="addCpuBtn">CPUを追加</button>' : ''}</div><div class="player-list">${players}</div><p class="small-note">対戦を始めるたびに座席順をランダムに並べ替えます。チーム戦は並べ替え後の1・3番がA、2・4番がBです。</p></div>
     <div class="card"><h2>ゲーム設定</h2><div class="form-grid">
-      <div class="field"><label>戦場カード</label><select id="battleMode" ${state.legal.canEditSettings ? '' : 'disabled'}><option value="random" ${shownSettings.battleMode === 'random' ? 'selected' : ''}>ランダム1枚（総合決着まで固定）</option><option value="round" ${shownSettings.battleMode === 'round' ? 'selected' : ''}>各ラウンドごとにランダム変更</option><option value="fixed" ${shownSettings.battleMode === 'fixed' ? 'selected' : ''}>指定した戦場で固定</option></select></div>
+      <div class="field"><label>戦場カード</label><select id="battleMode" ${state.legal.canEditSettings ? '' : 'disabled'}><option value="round" ${shownSettings.battleMode !== 'fixed' ? 'selected' : ''}>ラウンドごとに変更（10種類重複なし）</option><option value="fixed" ${shownSettings.battleMode === 'fixed' ? 'selected' : ''}>指定した戦場で固定</option></select></div>
       <div class="field"><label>固定する戦場</label><select id="fixedBattle" ${state.legal.canEditSettings && shownSettings.battleMode === 'fixed' ? '' : 'disabled'}>${options}</select></div>
       <div class="field"><label>CPUの強さ</label><select id="cpuLevel" ${state.legal.canEditSettings ? '' : 'disabled'}><option value="easy" ${shownSettings.cpuLevel === 'easy' ? 'selected' : ''}>弱い</option><option value="normal" ${shownSettings.cpuLevel === 'normal' ? 'selected' : ''}>普通</option><option value="hard" ${shownSettings.cpuLevel === 'hard' ? 'selected' : ''}>強い</option></select></div>
       <label class="check-row"><span>4人用 2対2チーム戦</span><input id="teamMode" type="checkbox" ${shownSettings.teamMode ? 'checked' : ''} ${state.legal.canEditSettings ? '' : 'disabled'}></label>
