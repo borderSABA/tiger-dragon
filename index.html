@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#0b1015">
   <meta name="description" content="タイガー＆ドラゴン 身内用ブラウザ対戦版">
   <meta name="robots" content="noindex,nofollow,noarchive">
-  <title>タイガー＆ドラゴン オンライン</title>
+  <title>タイガー＆ドラゴン オンライン v5.2</title>
   <style>
 :root {
   --bg:#080b0f;
@@ -36,7 +36,10 @@ button:disabled { cursor:not-allowed; opacity:.42; }
 .logo .dragon { color:var(--red); text-shadow:0 0 22px #ef465455; }
 .logo .amp { color:#f5f1e8; font-size:.65em; }
 .subtitle { color:var(--muted); text-align:center; margin:12px 0 24px; }
-.name-entry { display:grid; grid-template-columns:auto minmax(180px,360px); justify-content:center; align-items:center; gap:12px; margin-bottom:20px; }
+.name-entry { position:relative; z-index:5; display:grid; grid-template-columns:auto minmax(180px,360px); justify-content:center; align-items:center; gap:12px; margin-bottom:20px; pointer-events:auto; }
+.name-entry input { position:relative; z-index:6; pointer-events:auto; user-select:text; -webkit-user-select:text; touch-action:manipulation; }
+.version-badge { display:inline-flex; align-items:center; margin-left:10px; padding:3px 8px; border:1px solid #ffffff35; border-radius:999px; color:#d8dce8; background:#101421b8; font-size:12px; font-weight:800; letter-spacing:.04em; vertical-align:middle; }
+.version-line { margin:4px 0 12px; color:var(--muted); font-size:12px; text-align:center; }
 .name-entry label,.field label { color:var(--muted); font-size:13px; }
 input,select { width:100%; background:#0d1116; color:var(--text); border:1px solid var(--line); border-radius:11px; padding:12px 13px; outline:none; }
 input:focus,select:focus { border-color:var(--blue); box-shadow:0 0 0 3px #35bed919; }
@@ -363,6 +366,8 @@ const socket = new TigerDragonSocket(window.TD_SERVER_URL);
 const app = document.querySelector('#app');
 const toast = document.querySelector('#toast');
 const specialLayer = document.querySelector('#specialLayer');
+const APP_VERSION = 'v5.2';
+const ASSET_VERSION = '5.2';
 
 let rooms = [];
 let state = null;
@@ -375,7 +380,7 @@ let connectionMessage = '';
 let settingsDraft = null;
 let settingsSaveTimer = null;
 
-const BGM_PLAYLIST_URL = './bgm/playlist.txt';
+const BGM_PLAYLIST_URL = `./bgm/playlist.txt?v=${encodeURIComponent(ASSET_VERSION)}`;
 const bgmAudio = new Audio();
 bgmAudio.preload = 'none';
 let bgmTracks = [];
@@ -392,8 +397,11 @@ bgmAudio.volume = bgmVolume / 100;
 function trackUrl(line) {
   const value = line.trim();
   if (/^https?:\/\//i.test(value)) return value;
-  return new URL(value.includes('/') ? value : `./bgm/${value}`, location.href).toString();
+  const url = new URL(value.includes('/') ? value : `./bgm/${value}`, location.href);
+  url.searchParams.set('v', ASSET_VERSION);
+  return url.toString();
 }
+
 
 function trackName(url) {
   if (!url) return '停止中';
@@ -401,7 +409,12 @@ function trackName(url) {
   catch { return 'BGM'; }
 }
 
-async function loadBgmPlaylist() {
+async function loadBgmPlaylist(force = false) {
+  if (force) {
+    bgmPlaylistLoaded = false;
+    bgmPlaylistPromise = null;
+    bgmFailedIndexes.clear();
+  }
   if (bgmPlaylistLoaded) return bgmTracks;
   if (bgmPlaylistPromise) return bgmPlaylistPromise;
   bgmPlaylistPromise = fetch(BGM_PLAYLIST_URL, { cache:'no-store' })
@@ -424,7 +437,8 @@ async function loadBgmPlaylist() {
       bgmPlaylistLoaded = true;
       updateBgmControls();
       return bgmTracks;
-    });
+    })
+    .finally(() => { bgmPlaylistPromise = null; });
   return bgmPlaylistPromise;
 }
 
@@ -492,7 +506,10 @@ function setBgmVolume(value) {
   localStorage.setItem('td:bgmVolume', String(bgmVolume));
   bgmAudio.volume = bgmVolume / 100;
   if (bgmVolume === 0) bgmAudio.pause();
-  else ensureBgmPlaying();
+  else {
+    if (!bgmTracks.length || bgmFailedIndexes.size >= bgmTracks.length) loadBgmPlaylist(true).then(ensureBgmPlaying);
+    else ensureBgmPlaying();
+  }
   updateBgmControls();
 }
 
@@ -711,10 +728,34 @@ function playTick() {
 }
 
 const SPECIAL_SOUND_URLS = {
-  tiger: './sfx/tiger.m4a',
-  dragon: './sfx/dragon.m4a'
+  tiger: `./sfx/tiger.m4a?v=${encodeURIComponent(ASSET_VERSION)}`,
+  dragon: `./sfx/dragon.m4a?v=${encodeURIComponent(ASSET_VERSION)}`
 };
 const activeSpecialAudios = new Set();
+let audioUnlocked = false;
+
+function unlockGameAudio() {
+  if (audioUnlocked) return;
+  audioUnlocked = true;
+  for (const source of Object.values(SPECIAL_SOUND_URLS)) {
+    try {
+      const audio = new Audio(source);
+      audio.preload = 'auto';
+      audio.load();
+    } catch {}
+  }
+  try {
+    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+    if (AudioContextClass) {
+      const context = new AudioContextClass();
+      if (context.state === 'suspended') context.resume().catch(() => {});
+      setTimeout(() => context.close().catch(() => {}), 200);
+    }
+  } catch {}
+}
+
+document.addEventListener('pointerdown', unlockGameAudio, { once:true, passive:true });
+document.addEventListener('keydown', unlockGameAudio, { once:true });
 
 function playBuiltInSpecialSound(kind) {
   try {
@@ -817,7 +858,7 @@ function landingHTML() {
   const cards = rooms.length ? rooms.map(roomCardHTML).join('') : '<div class="loading">部屋情報を取得しています…</div>';
   return `${connectionBanner()}<main class="landing"><section class="hero wide">
     <h1 class="logo"><span class="tiger">TIGER</span><span class="amp"> &amp; </span><span class="dragon">DRAGON</span></h1>
-    <p class="subtitle">身内用ブラウザ対戦版</p>
+    <p class="subtitle">身内用ブラウザ対戦版 <span class="version-badge">${APP_VERSION}</span></p>
     ${bgmControlHTML('landing-bgm')}
     <div class="name-entry"><label for="nameInput">表示名</label><input id="nameInput" maxlength="16" value="${esc(name)}" placeholder="SABA" autocomplete="nickname" inputmode="text"></div>
     <div class="room-grid">${cards}</div>
@@ -841,7 +882,7 @@ function roomCardHTML(room) {
 
 function topbarHTML() {
   const self = state.players.find((p) => p.id === state.selfId);
-  return `${connectionBanner()}<header class="topbar"><div><span class="room-title">第${state.roomId}対局室</span>${self?.isHost ? '<span class="badge gold">部屋主</span>' : ''}</div><div class="top-actions">
+  return `${connectionBanner()}<header class="topbar"><div><span class="room-title">第${state.roomId}対局室</span><span class="version-badge">${APP_VERSION}</span>${self?.isHost ? '<span class="badge gold">部屋主</span>' : ''}</div><div class="top-actions">
     ${bgmControlHTML()}
     <button class="icon-btn" id="copyUrlBtn">URL</button>
     <button class="icon-btn" id="rulesBtn">遊び方</button>
@@ -938,13 +979,27 @@ function rulesHTML() {
     <h3>攻めと受け</h3><p>攻め牌と同じ数字で受けると、受けた人が次に攻めます。受けられる場合でもパスできます。</p>
     <h3>奥義牌</h3><p>タイガーは偶数、ドラゴンは奇数の攻めを受けられます。奥義牌で攻めた場合は同じ色の牌で受けられます。奥義牌が場に出ると全員の画面に演出が表示されます。</p>
     <h3>1周ボーナス</h3><p>全員がパスして攻めた人まで戻ると、手牌1枚を裏向きで受け列に置き、続けて攻めます。2人戦と奥義牌上がりでは追加点になりません。洞窟では全員分を獲得します。</p>
-    <h3>戦場カード</h3><p>戦場は、総合決着まで固定・各ラウンドごとに変更・任意指定の3種類から選べます。各ラウンド変更では、直前と同じ戦場は連続しません。</p><h3>座席順</h3><p>新しい対戦を始めるたびに参加者の座席順をランダムに並べ替えます。局ごとの先攻は、その座席順で左隣へ移ります。</p>
+    <h3>戦場カード</h3><p>通常はラウンドごとに戦場が変わり、10種類を使い切るまで重複しません。練習用に任意の戦場へ固定することもできます。</p><h3>座席順</h3><p>新しい対戦を始めるたびに参加者の座席順をランダムに並べ替えます。局ごとの先攻は、その座席順で左隣へ移ります。</p>
     <div class="modal-actions"><button class="btn" id="closeRulesBtn">閉じる</button></div></section></div>`;
 }
 
 function render() {
+  const previousNameInput = document.querySelector('#nameInput');
+  const wasNameFocused = previousNameInput && document.activeElement === previousNameInput;
+  const selectionStart = wasNameFocused ? previousNameInput.selectionStart : null;
+  const selectionEnd = wasNameFocused ? previousNameInput.selectionEnd : null;
+  if (previousNameInput) name = previousNameInput.value;
+
   app.innerHTML = state ? (state.status === 'lobby' ? lobbyHTML() : gameHTML()) : landingHTML();
   bind();
+
+  if (!state && wasNameFocused) {
+    const nextNameInput = document.querySelector('#nameInput');
+    if (nextNameInput) {
+      nextNameInput.focus({ preventScroll:true });
+      try { nextNameInput.setSelectionRange(selectionStart, selectionEnd); } catch {}
+    }
+  }
 }
 
 function joinRoom(roomId) {
@@ -966,10 +1021,18 @@ function bind() {
   bindJoinRoomButtons();
   document.querySelectorAll('.bgm-volume').forEach((input) => input.addEventListener('input', (event) => setBgmVolume(event.target.value)));
   updateBgmControls();
-  document.querySelector('#nameInput')?.addEventListener('input', (event) => {
-    name = event.target.value;
-    localStorage.setItem('td:name', name);
-  });
+  const nameInput = document.querySelector('#nameInput');
+  if (nameInput) {
+    const saveName = (event) => {
+      name = event.target.value;
+      localStorage.setItem('td:name', name);
+    };
+    nameInput.addEventListener('input', saveName);
+    nameInput.addEventListener('change', saveName);
+    nameInput.addEventListener('compositionend', saveName);
+    nameInput.addEventListener('pointerdown', (event) => event.stopPropagation());
+    nameInput.addEventListener('click', (event) => event.stopPropagation());
+  }
   document.querySelectorAll('#copyUrlBtn').forEach((button) => button.addEventListener('click', async () => {
     try {
       await navigator.clipboard.writeText(location.href.split('#')[0]);
@@ -1004,6 +1067,9 @@ function bind() {
     else if (action === 'REVEAL') emit('revealTile', { tileId });
   }));
 }
+
+console.info(`Tiger & Dragon ${APP_VERSION}`);
+document.documentElement.dataset.appVersion = APP_VERSION;
 
 socket.refreshLobby();
 setInterval(() => socket.refreshLobby(), 2000);
