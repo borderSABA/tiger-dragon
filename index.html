@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#0b1015">
   <meta name="description" content="タイガー＆ドラゴン 身内用ブラウザ対戦版">
   <meta name="robots" content="noindex,nofollow,noarchive">
-  <title>タイガー＆ドラゴン オンライン v5.2</title>
+  <title>タイガー＆ドラゴン オンライン v5.3</title>
   <style>
 :root {
   --bg:#080b0f;
@@ -181,6 +181,141 @@ input:focus,select:focus { border-color:var(--blue); box-shadow:0 0 0 3px #35bed
 }
 @media (orientation:portrait) and (max-width:700px) {
   .shell::before { content:"横向きにすると盤面が見やすくなります"; position:fixed; z-index:250; top:48px; left:50%; transform:translateX(-50%); padding:6px 10px; border-radius:8px; background:#000d; color:var(--gold); font-size:11px; white-space:nowrap; }
+}
+
+/* v5.3: 対局画面を1画面内へ収める */
+html,body,#app { height:100%; }
+body.game-active { overflow:hidden; }
+.game-shell { height:100dvh; min-height:0; overflow:hidden; grid-template-rows:auto minmax(0,1fr) auto; }
+.game-shell .topbar { position:relative; padding:7px 10px; }
+.game-shell .top-actions { flex-wrap:nowrap; }
+.game-shell .bgm-control { min-width:220px; padding:5px 8px; }
+.game-shell .main { height:100%; min-height:0; padding:8px 10px; overflow:hidden; }
+.game-shell .game-layout { height:100%; min-height:0; grid-template-columns:minmax(0,1fr) minmax(240px,300px); gap:8px; align-items:stretch; }
+.game-shell .table-area { min-height:0; display:flex; flex-direction:column; gap:8px; overflow:hidden; }
+.game-shell .battle-card { flex:0 0 auto; padding:9px 12px; }
+.battle-head { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; }
+.hidden-pile { flex:0 0 auto; display:flex; align-items:center; gap:7px; padding:6px 9px; border:1px solid #ffffff2d; border-radius:10px; background:#07101588; font-size:12px; font-weight:900; white-space:nowrap; }
+.hidden-pile .mini-back { width:18px; height:24px; display:inline-block; border-radius:4px; background:repeating-linear-gradient(45deg,#4a5966 0 4px,#28323b 4px 8px); box-shadow:0 2px 0 #0a0d10; }
+.hidden-pile strong { color:var(--gold); font-size:16px; }
+.game-shell .battle-title { font-size:19px; }
+.game-shell .battle-short { font-size:13px; }
+.game-shell .battle-detail { font-size:11px; }
+.game-shell .score-strip { flex:0 0 auto; padding:7px; }
+.game-shell .score-strip strong { font-size:18px; }
+.game-shell .center-status { flex:0 0 auto; min-height:68px; padding:6px 10px; }
+.game-shell .current-attack { gap:9px; }
+.game-shell .tile.large { width:48px; height:60px; flex-basis:48px; font-size:28px; }
+.game-shell .players-grid { flex:1 1 auto; min-height:0; overflow:hidden; gap:7px; grid-auto-rows:minmax(0,1fr); }
+.game-shell .players-grid.count-2 { grid-template-columns:repeat(2,minmax(0,1fr)); }
+.game-shell .players-grid.count-3 { grid-template-columns:repeat(3,minmax(0,1fr)); }
+.game-shell .players-grid.count-4 { grid-template-columns:repeat(2,minmax(0,1fr)); }
+.game-shell .players-grid.count-5 { grid-template-columns:repeat(3,minmax(0,1fr)); }
+.game-shell .player-board { min-height:0; padding:7px; display:flex; flex-direction:column; }
+.game-shell .player-head { margin-bottom:5px; }
+.game-shell .score { font-size:18px; }
+.game-shell .rows { flex:1 1 auto; min-height:0; gap:4px; grid-template-rows:repeat(2,minmax(0,1fr)); }
+.game-shell .row { min-height:0; padding:3px 4px; overflow-y:hidden; scrollbar-width:none; }
+.game-shell .row::-webkit-scrollbar,.game-shell .hand::-webkit-scrollbar { width:0; height:0; }
+.game-shell .tile { width:34px; height:43px; flex-basis:34px; font-size:19px; border-radius:6px; }
+.game-shell .tile.wild { font-size:18px; }
+.game-shell .tile.wild small { font-size:7px; }
+.game-shell .side-panel { position:static; min-height:0; height:100%; display:grid; grid-template-columns:1fr; grid-template-rows:auto minmax(0,1fr) auto; gap:8px; overflow:hidden; }
+.game-shell .side-panel > .card { min-height:0; padding:9px; }
+.game-shell .side-panel > .card h3 { margin-bottom:6px; }
+.game-shell .side-panel > .card:nth-child(2) { display:flex; flex-direction:column; min-height:0; }
+.game-shell .log { flex:1 1 auto; min-height:0; max-height:none; overflow-y:auto; }
+.game-shell .log-line { padding-bottom:4px; font-size:11px; }
+.game-shell .danger-zone .small-note { display:none; }
+.game-shell .danger-zone .action-row { gap:5px; }
+.game-shell .danger-zone .btn { padding:7px 8px; font-size:11px; }
+.game-shell .hand-zone { position:relative; padding:5px 10px 7px; overflow:hidden; }
+.game-shell .hand-head { margin-bottom:3px; font-size:13px; }
+.game-shell .hand { min-height:58px; padding:4px 4px 6px; gap:5px; overflow-x:auto; overflow-y:hidden; scrollbar-width:none; }
+.game-shell .hand .tile { width:43px; height:55px; flex-basis:43px; font-size:25px; }
+.game-shell .hand .tile.wild { font-size:23px; }
+
+@media (max-height:800px) {
+  .game-shell .topbar { padding:5px 8px; }
+  .game-shell .main { padding:5px 7px; }
+  .game-shell .table-area,.game-shell .game-layout,.game-shell .side-panel { gap:5px; }
+  .game-shell .battle-card { padding:6px 9px; }
+  .game-shell .battle-title { font-size:16px; }
+  .game-shell .battle-short { font-size:11px; }
+  .game-shell .battle-detail { font-size:10px; }
+  .hidden-pile { padding:4px 7px; font-size:10px; }
+  .hidden-pile strong { font-size:14px; }
+  .hidden-pile .mini-back { width:14px; height:19px; }
+  .game-shell .center-status { min-height:52px; padding:4px 7px; }
+  .game-shell .player-board { padding:5px; }
+  .game-shell .player-head { margin-bottom:3px; font-size:12px; }
+  .game-shell .small-note { font-size:10px; line-height:1.25; }
+  .game-shell .badge { padding:2px 4px; font-size:8px; }
+  .game-shell .score { font-size:15px; }
+  .game-shell .tile { width:30px; height:38px; flex-basis:30px; font-size:17px; }
+  .game-shell .row { padding:2px 3px; }
+  .game-shell .hand-zone { padding:3px 8px 4px; }
+  .game-shell .hand { min-height:48px; padding:2px 3px 4px; }
+  .game-shell .hand .tile { width:37px; height:48px; flex-basis:37px; font-size:21px; }
+  .game-shell .side-panel > .card { padding:7px; }
+  .game-shell .log-line { font-size:10px; line-height:1.2; }
+}
+
+@media (max-width:900px) and (orientation:landscape) {
+  .game-shell .game-layout { grid-template-columns:minmax(0,1fr) minmax(185px,28vw); }
+  .game-shell .side-panel { grid-template-columns:1fr; grid-template-rows:auto minmax(0,1fr) auto; }
+  .game-shell .topbar { flex-wrap:nowrap; }
+  .game-shell .top-actions { width:auto; justify-content:flex-end; }
+  .game-shell .bgm-control { min-width:0; width:190px; }
+  .game-shell .bgm-track { display:none; }
+}
+
+@media (max-height:560px) {
+  .game-shell .topbar { padding:3px 6px; font-size:11px; }
+  .game-shell .version-badge,.game-shell .badge.gold { font-size:8px; padding:2px 4px; }
+  .game-shell .icon-btn { padding:4px 6px; font-size:10px; }
+  .game-shell .bgm-control { padding:3px 5px; font-size:9px; }
+  .game-shell .bgm-control input[type="range"] { width:74px; }
+  .game-shell .bgm-value { min-width:26px; }
+  .game-shell .main { padding:3px 5px; }
+  .game-shell .battle-card { padding:4px 6px; }
+  .game-shell .battle-title { font-size:13px; }
+  .game-shell .battle-short { font-size:9px; margin-top:1px; }
+  .game-shell .battle-detail { display:none; }
+  .hidden-pile { padding:3px 5px; font-size:9px; }
+  .hidden-pile strong { font-size:12px; }
+  .hidden-pile .mini-back { width:11px; height:15px; }
+  .game-shell .score-strip { padding:3px; font-size:10px; }
+  .game-shell .score-strip strong { font-size:13px; }
+  .game-shell .center-status { min-height:38px; padding:2px 5px; font-size:10px; }
+  .game-shell .tile.large { width:32px; height:40px; flex-basis:32px; font-size:18px; }
+  .game-shell .player-board { padding:3px; border-radius:8px; }
+  .game-shell .player-head { margin-bottom:1px; font-size:9px; }
+  .game-shell .player-head .small-note { font-size:7px; }
+  .game-shell .score { font-size:11px; }
+  .game-shell .row { padding:1px 2px; border-radius:5px; }
+  .game-shell .row-label { width:20px; flex-basis:20px; font-size:7px; }
+  .game-shell .tile { width:24px; height:30px; flex-basis:24px; font-size:13px; box-shadow:0 2px 0 #afb4b7,0 3px 5px #0007; }
+  .game-shell .tile.wild { font-size:12px; }
+  .game-shell .tile.wild small { display:none; }
+  .game-shell .side-panel > .card { padding:4px; border-radius:8px; }
+  .game-shell .side-panel h3 { font-size:11px; }
+  .game-shell .side-panel .action-message,.game-shell .side-panel .small-note { font-size:8px; line-height:1.2; }
+  .game-shell .log-line { font-size:8px; padding-bottom:2px; }
+  .game-shell .danger-zone .btn { padding:4px; font-size:8px; }
+  .game-shell .hand-zone { padding:2px 5px 3px; }
+  .game-shell .hand-head { margin-bottom:1px; font-size:9px; }
+  .game-shell .hand { min-height:36px; padding:1px 2px 2px; gap:3px; }
+  .game-shell .hand .tile { width:29px; height:37px; flex-basis:29px; font-size:16px; }
+  .game-shell .hand .tile.wild { font-size:15px; }
+}
+
+@media (max-width:650px) and (orientation:portrait) {
+  .game-shell .game-layout { grid-template-columns:1fr; }
+  .game-shell .side-panel { display:none; }
+  .game-shell .players-grid,.game-shell .players-grid.count-2,.game-shell .players-grid.count-3,.game-shell .players-grid.count-4,.game-shell .players-grid.count-5 { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .game-shell .top-actions { flex-wrap:nowrap; width:auto; }
+  .game-shell .bgm-control { display:none; }
 }
 
   </style>
@@ -366,8 +501,8 @@ const socket = new TigerDragonSocket(window.TD_SERVER_URL);
 const app = document.querySelector('#app');
 const toast = document.querySelector('#toast');
 const specialLayer = document.querySelector('#specialLayer');
-const APP_VERSION = 'v5.2';
-const ASSET_VERSION = '5.2';
+const APP_VERSION = 'v5.3';
+const ASSET_VERSION = '5.3';
 
 let rooms = [];
 let state = null;
@@ -528,6 +663,14 @@ const battlefieldNames = {
   field:'草原の戦い', coast:'浜辺の戦い', volcano:'火山の戦い', dojo:'道場の戦い', forest:'竹林の戦い',
   storm:'嵐の戦い', swamp:'沼地の戦い', cave:'洞窟の戦い', cliff:'崖の上の戦い', fog:'濃霧の戦い'
 };
+
+const handSizeByPlayers = Object.freeze({ 2:13, 3:11, 4:9, 5:7 });
+function hiddenTileCount() {
+  const playerCount = state?.players?.length || 0;
+  const handSize = handSizeByPlayers[playerCount];
+  if (!handSize) return 0;
+  return 38 - (playerCount * handSize + 1);
+}
 
 function esc(value) {
   return String(value ?? '').replace(/[&<>'"]/g, (c) => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', "'":'&#39;', '"':'&quot;' }[c]));
@@ -958,10 +1101,11 @@ function gameHTML() {
   const players = state.players.map(playerBoardHTML).join('');
   const logs = [...state.log].reverse().map((entry) => `<div class="log-line">${esc(entry.message)}</div>`).join('');
   const battleRed = ['storm','swamp','cave','cliff','fog'].includes(state.battlefield?.id) ? 'red' : '';
-  return `<div class="shell">${topbarHTML()}<main class="main"><div class="game-layout"><section class="table-area">
-    <div class="battle-card ${battleRed}"><div class="battle-title">${esc(state.battlefield?.name || '')}</div><div class="battle-short">${esc(state.battlefield?.short || '')}</div><div class="battle-detail">${esc(state.battlefield?.detail || '')}／奥義牌上がりは1点・ボーナスなし</div></div>
+  const hiddenCount = hiddenTileCount();
+  return `<div class="shell game-shell">${topbarHTML()}<main class="main"><div class="game-layout"><section class="table-area">
+    <div class="battle-card ${battleRed}"><div class="battle-head"><div><div class="battle-title">${esc(state.battlefield?.name || '')}</div><div class="battle-short">${esc(state.battlefield?.short || '')}</div></div><div class="hidden-pile" title="このラウンドで配られず、内容が分からない牌"><span class="mini-back" aria-hidden="true"></span><span>隠し牌 <strong>${hiddenCount}</strong>枚</span></div></div><div class="battle-detail">${esc(state.battlefield?.detail || '')}／奥義牌上がりは1点・ボーナスなし</div></div>
     ${state.teamScores ? `<div class="score-strip"><div>チームA <strong>${state.teamScores.A}点</strong></div><div>チームB <strong>${state.teamScores.B}点</strong></div></div>` : ''}
-    <div class="center-status">${attack}</div><div class="players-grid ${state.players.length === 5 ? 'five' : ''}">${players}</div>
+    <div class="center-status">${attack}</div><div class="players-grid count-${state.players.length}">${players}</div>
   </section><aside class="side-panel"><div class="card"><h3>第${state.roundNumber}局</h3><div class="action-message">${esc(actionText())}</div><p class="small-note">${esc(battlefieldModeNote())}</p></div><div class="card"><h3>進行ログ</h3><div class="log">${logs}</div></div>${hostControlsHTML()}</aside></div></main>${handHTML()}${resultOverlayHTML()}${rulesOpen ? rulesHTML() : ''}</div>`;
 }
 
@@ -979,11 +1123,12 @@ function rulesHTML() {
     <h3>攻めと受け</h3><p>攻め牌と同じ数字で受けると、受けた人が次に攻めます。受けられる場合でもパスできます。</p>
     <h3>奥義牌</h3><p>タイガーは偶数、ドラゴンは奇数の攻めを受けられます。奥義牌で攻めた場合は同じ色の牌で受けられます。奥義牌が場に出ると全員の画面に演出が表示されます。</p>
     <h3>1周ボーナス</h3><p>全員がパスして攻めた人まで戻ると、手牌1枚を裏向きで受け列に置き、続けて攻めます。2人戦と奥義牌上がりでは追加点になりません。洞窟では全員分を獲得します。</p>
-    <h3>戦場カード</h3><p>通常はラウンドごとに戦場が変わり、10種類を使い切るまで重複しません。練習用に任意の戦場へ固定することもできます。</p><h3>座席順</h3><p>新しい対戦を始めるたびに参加者の座席順をランダムに並べ替えます。局ごとの先攻は、その座席順で左隣へ移ります。</p>
+    <h3>戦場カード</h3><p>通常はラウンドごとに戦場が変わり、10種類を使い切るまで重複しません。練習用に任意の戦場へ固定することもできます。</p><h3>隠し牌</h3><p>配牌後にゲームへ入らず裏向きのまま除外される牌です。2人11枚・3人4枚・4人1枚・5人2枚で、戦場カード右上に枚数だけ表示します。</p><h3>座席順</h3><p>新しい対戦を始めるたびに参加者の座席順をランダムに並べ替えます。局ごとの先攻は、その座席順で左隣へ移ります。</p>
     <div class="modal-actions"><button class="btn" id="closeRulesBtn">閉じる</button></div></section></div>`;
 }
 
 function render() {
+  document.body.classList.toggle('game-active', Boolean(state && state.status !== 'lobby'));
   const previousNameInput = document.querySelector('#nameInput');
   const wasNameFocused = previousNameInput && document.activeElement === previousNameInput;
   const selectionStart = wasNameFocused ? previousNameInput.selectionStart : null;
