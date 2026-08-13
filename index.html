@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#0b1015">
   <meta name="description" content="タイガー＆ドラゴン 身内用ブラウザ対戦版">
   <meta name="robots" content="noindex,nofollow,noarchive">
-  <title>タイガー＆ドラゴン オンライン v5.3</title>
+  <title>タイガー＆ドラゴン オンライン v5.4</title>
   <style>
 :root {
   --bg:#080b0f;
@@ -179,9 +179,6 @@ input:focus,select:focus { border-color:var(--blue); box-shadow:0 0 0 3px #35bed
   .bgm-track { max-width:110px; }
   .tile { width:37px; height:49px; flex-basis:37px; font-size:21px; }
 }
-@media (orientation:portrait) and (max-width:700px) {
-  .shell::before { content:"横向きにすると盤面が見やすくなります"; position:fixed; z-index:250; top:48px; left:50%; transform:translateX(-50%); padding:6px 10px; border-radius:8px; background:#000d; color:var(--gold); font-size:11px; white-space:nowrap; }
-}
 
 /* v5.3: 対局画面を1画面内へ収める */
 html,body,#app { height:100%; }
@@ -318,7 +315,248 @@ body.game-active { overflow:hidden; }
   .game-shell .bgm-control { display:none; }
 }
 
-  </style>
+  
+
+/* v5.4: タイトル部屋リセット・トップバー部屋管理・手牌拡大 */
+.room-card-actions { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:8px; }
+.room-card-actions .btn { min-width:0; }
+.icon-btn.manage { border-color:#8a7130; color:#ffe28b; background:#261f0e; }
+.room-manager { width:min(520px,calc(100% - 24px)); }
+.room-manager-actions { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:16px; }
+
+.game-shell .topbar { padding:5px 8px; }
+.game-shell .main { padding:5px 8px; }
+.game-shell .game-layout { grid-template-columns:minmax(0,1fr) minmax(215px,270px); gap:6px; }
+.game-shell .table-area { gap:5px; }
+.game-shell .battle-card { padding:6px 9px; }
+.game-shell .battle-title { font-size:16px; }
+.game-shell .battle-short { font-size:11px; }
+.game-shell .battle-detail { font-size:9px; margin-top:2px; }
+.game-shell .score-strip { padding:4px 6px; font-size:11px; }
+.game-shell .score-strip strong { font-size:15px; }
+.game-shell .center-status { min-height:48px; padding:3px 6px; font-size:11px; }
+.game-shell .tile.large { width:40px; height:50px; flex-basis:40px; font-size:23px; }
+.game-shell .players-grid { gap:5px; }
+.game-shell .player-board { padding:4px; border-radius:9px; }
+.game-shell .player-head { margin-bottom:2px; font-size:11px; }
+.game-shell .player-head .small-note { font-size:9px; line-height:1.15; }
+.game-shell .score { font-size:14px; }
+.game-shell .rows { gap:2px; }
+.game-shell .row { padding:1px 2px; border-radius:6px; }
+.game-shell .row-label { width:22px; flex-basis:22px; font-size:8px; }
+.game-shell .tile { width:28px; height:35px; flex-basis:28px; font-size:15px; box-shadow:0 2px 0 #afb4b7,0 3px 5px #0007; }
+.game-shell .tile.wild { font-size:14px; }
+.game-shell .side-panel { grid-template-rows:auto minmax(0,1fr); gap:5px; }
+.game-shell .side-panel > .card { padding:6px; border-radius:9px; }
+.game-shell .side-panel h3 { margin-bottom:4px; font-size:12px; }
+.game-shell .side-panel .action-message,.game-shell .side-panel .small-note { font-size:9px; line-height:1.25; }
+.game-shell .log-line { font-size:9px; padding-bottom:3px; }
+.game-shell .hand-zone { padding:4px 8px 6px; }
+.game-shell .hand-head { margin-bottom:2px; font-size:12px; }
+.game-shell .hand { min-height:78px; padding:3px 4px 5px; gap:6px; }
+.game-shell .hand .tile { width:58px; height:75px; flex-basis:58px; font-size:34px; border-radius:9px; box-shadow:0 4px 0 #afb4b7,0 5px 8px #0007; }
+.game-shell .hand .tile.wild { font-size:31px; }
+.game-shell .hand .tile.wild small { font-size:9px; }
+
+@media (max-height:800px) {
+  .game-shell .battle-detail { display:none; }
+  .game-shell .center-status { min-height:40px; }
+  .game-shell .player-head .small-note { font-size:8px; }
+  .game-shell .hand { min-height:69px; }
+  .game-shell .hand .tile { width:52px; height:67px; flex-basis:52px; font-size:30px; }
+  .game-shell .hand .tile.wild { font-size:28px; }
+}
+
+@media (max-height:560px) {
+  .game-shell .main { padding:2px 4px; }
+  .game-shell .battle-card { padding:3px 5px; }
+  .game-shell .battle-title { font-size:12px; }
+  .game-shell .score-strip { padding:2px; }
+  .game-shell .center-status { min-height:30px; }
+  .game-shell .player-head .small-note { display:none; }
+  .game-shell .side-panel .small-note { display:none; }
+  .game-shell .hand { min-height:58px; gap:4px; }
+  .game-shell .hand .tile { width:43px; height:56px; flex-basis:43px; font-size:25px; }
+  .game-shell .hand .tile.wild { font-size:23px; }
+}
+
+@media (max-width:700px) {
+  .room-manager-actions { grid-template-columns:1fr; }
+  .room-card-actions { grid-template-columns:1fr; }
+}
+
+/* v5.5: スマホ縦持ち専用UI */
+@media (max-width:700px) and (orientation:portrait) {
+  html,body,#app { width:100%; height:100%; min-height:0; overflow:hidden; }
+  body.game-active { overscroll-behavior:none; touch-action:manipulation; }
+  .game-shell { width:100%; height:100dvh; grid-template-rows:auto minmax(0,1fr) auto; overflow:hidden; }
+
+  /* トップバーは2段。操作は横一列にして高さを固定 */
+  .game-shell .topbar {
+    position:relative;
+    display:grid;
+    grid-template-columns:1fr;
+    gap:4px;
+    padding:5px 7px 6px;
+    font-size:11px;
+  }
+  .game-shell .topbar > div:first-child {
+    display:flex;
+    align-items:center;
+    gap:5px;
+    min-width:0;
+  }
+  .game-shell .room-title { font-size:13px; }
+  .game-shell .version-badge,.game-shell .badge.gold { font-size:8px; padding:2px 4px; }
+  .game-shell .top-actions {
+    width:100%;
+    min-width:0;
+    display:flex;
+    align-items:center;
+    flex-wrap:nowrap;
+    gap:4px;
+    overflow:hidden;
+  }
+  .game-shell .icon-btn { padding:5px 7px; font-size:10px; white-space:nowrap; }
+  .game-shell .bgm-control {
+    display:flex;
+    flex:1 1 auto;
+    min-width:108px;
+    padding:3px 5px;
+    gap:4px;
+    font-size:9px;
+  }
+  .game-shell .bgm-control input[type="range"] { width:62px; min-width:45px; }
+  .game-shell .bgm-track { display:none; }
+  .game-shell .bgm-value { min-width:24px; font-size:8px; }
+
+  /* 盤面本体 */
+  .game-shell .main { min-height:0; height:100%; padding:4px 5px; overflow:hidden; }
+  .game-shell .game-layout {
+    height:100%;
+    min-height:0;
+    display:grid;
+    grid-template-columns:1fr;
+    grid-template-rows:minmax(0,1fr) auto;
+    gap:4px;
+  }
+  .game-shell .table-area { min-height:0; gap:4px; overflow:hidden; }
+
+  /* 戦場カードを薄く */
+  .game-shell .battle-card { padding:4px 6px; border-radius:8px; }
+  .game-shell .battle-head { align-items:center; gap:5px; }
+  .game-shell .battle-title { font-size:13px; line-height:1.05; }
+  .game-shell .battle-short { font-size:9px; line-height:1.1; margin-top:1px; }
+  .game-shell .battle-detail { display:none; }
+  .game-shell .hidden-pile { padding:3px 5px; gap:4px; font-size:8px; border-radius:7px; }
+  .game-shell .hidden-pile strong { font-size:11px; }
+  .game-shell .hidden-pile .mini-back { width:10px; height:14px; }
+  .game-shell .score-strip { padding:2px 4px; font-size:9px; }
+  .game-shell .score-strip strong { font-size:12px; }
+
+  /* 現在の攻め */
+  .game-shell .center-status { min-height:36px; padding:2px 5px; font-size:9px; border-radius:8px; }
+  .game-shell .current-attack { gap:5px; }
+  .game-shell .tile.large { width:31px; height:40px; flex-basis:31px; font-size:18px; }
+
+  /* プレイヤー欄：縦持ちは常に2列。5人時だけ3段 */
+  .game-shell .players-grid,
+  .game-shell .players-grid.count-2,
+  .game-shell .players-grid.count-3,
+  .game-shell .players-grid.count-4,
+  .game-shell .players-grid.count-5 {
+    min-height:0;
+    display:grid;
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    grid-auto-rows:minmax(0,1fr);
+    gap:4px;
+    overflow:hidden;
+  }
+  .game-shell .player-board { min-height:0; padding:3px; border-radius:7px; overflow:hidden; }
+  .game-shell .player-head { margin-bottom:1px; gap:3px; font-size:9px; line-height:1.05; }
+  .game-shell .player-name { font-size:10px; }
+  .game-shell .player-head .small-note { font-size:7px; line-height:1.05; }
+  .game-shell .badge { padding:1px 3px; font-size:7px; }
+  .game-shell .score { font-size:11px; }
+  .game-shell .reveal-line { min-height:0; gap:3px; font-size:7px; }
+  .game-shell .rows { min-height:0; gap:1px; grid-template-rows:repeat(2,minmax(0,1fr)); }
+  .game-shell .row { min-height:0; padding:1px; border-radius:4px; overflow-x:auto; overflow-y:hidden; }
+  .game-shell .row-label { width:18px; flex-basis:18px; font-size:6px; }
+  .game-shell .tile {
+    width:23px; height:29px; flex-basis:23px;
+    font-size:13px; border-radius:4px;
+    box-shadow:0 2px 0 #afb4b7,0 2px 4px #0007;
+  }
+  .game-shell .tile.wild { font-size:12px; }
+  .game-shell .tile.wild small { display:none; }
+
+  /* 右サイドは縦持ちでは進行状況だけ。ログは盤面優先で隠す */
+  .game-shell .side-panel {
+    display:block;
+    height:auto;
+    min-height:0;
+    overflow:hidden;
+  }
+  .game-shell .side-panel > .card { display:none; }
+  .game-shell .side-panel > .card:first-child {
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:6px;
+    padding:3px 6px;
+    border-radius:7px;
+    min-height:24px;
+  }
+  .game-shell .side-panel > .card:first-child h3 { margin:0; font-size:9px; white-space:nowrap; }
+  .game-shell .side-panel > .card:first-child .action-message { font-size:8px; line-height:1.05; text-align:right; }
+  .game-shell .side-panel > .card:first-child .small-note { display:none; }
+
+  /* 自分の手牌は縦持ちでも最優先で大きく */
+  .game-shell .hand-zone { position:relative; padding:4px 5px 6px; overflow:hidden; }
+  .game-shell .hand-head { margin-bottom:2px; gap:4px; font-size:10px; }
+  .game-shell .hand-head .action-message { font-size:8px; }
+  .game-shell .hand-head .btn { padding:5px 10px; font-size:10px; }
+  .game-shell .hand {
+    min-height:84px;
+    padding:2px 3px 5px;
+    gap:5px;
+    align-items:end;
+    overflow-x:auto;
+    overflow-y:hidden;
+    scrollbar-width:none;
+    -webkit-overflow-scrolling:touch;
+  }
+  .game-shell .hand::-webkit-scrollbar { display:none; }
+  .game-shell .hand .tile {
+    width:61px; height:79px; flex-basis:61px;
+    font-size:35px; border-radius:9px;
+    box-shadow:0 4px 0 #afb4b7,0 5px 8px #0007;
+  }
+  .game-shell .hand .tile.wild { font-size:32px; }
+  .game-shell .hand .tile.wild small { display:block; font-size:8px; }
+}
+
+/* 小さめスマホ（縦） */
+@media (max-width:390px) and (orientation:portrait) {
+  .game-shell .topbar { padding-left:4px; padding-right:4px; }
+  .game-shell .icon-btn { padding:4px 5px; font-size:9px; }
+  .game-shell .bgm-control { min-width:95px; }
+  .game-shell .bgm-control input[type="range"] { width:48px; }
+  .game-shell .hand .tile { width:57px; height:74px; flex-basis:57px; font-size:33px; }
+}
+
+/* 高さがかなり低い縦画面だけ少し圧縮 */
+@media (max-width:700px) and (orientation:portrait) and (max-height:700px) {
+  .game-shell .topbar { gap:2px; padding-top:3px; padding-bottom:3px; }
+  .game-shell .battle-short { display:none; }
+  .game-shell .center-status { min-height:30px; }
+  .game-shell .player-head .small-note { display:none; }
+  .game-shell .hand { min-height:70px; }
+  .game-shell .hand .tile { width:51px; height:66px; flex-basis:51px; font-size:29px; }
+  .game-shell .hand .tile.wild { font-size:27px; }
+}
+
+</style>
 </head>
 <body>
   <div id="app"></div>
@@ -385,6 +623,18 @@ body.game-active { overflow:hidden; }
       } catch (error) {
         this.fire('networkError', { message:error.message });
       }
+    }
+
+    async resetRoom(roomId) {
+      if (!this.validConfig()) throw new Error('Cloudflare WorkersのURLが設定されていません。');
+      const response = await fetch(`${this.baseUrl}/api/rooms/${encodeURIComponent(roomId)}/reset`, {
+        method:'POST',
+        headers:{ 'content-type':'application/json' },
+        cache:'no-store'
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok || data.ok === false) throw new Error(data.error || `部屋のリセットに失敗しました（${response.status}）。`);
+      return data;
     }
 
     socketUrl(roomId) {
@@ -501,12 +751,13 @@ const socket = new TigerDragonSocket(window.TD_SERVER_URL);
 const app = document.querySelector('#app');
 const toast = document.querySelector('#toast');
 const specialLayer = document.querySelector('#specialLayer');
-const APP_VERSION = 'v5.3';
-const ASSET_VERSION = '5.3';
+const APP_VERSION = 'v5.5';
+const ASSET_VERSION = '5.4';
 
 let rooms = [];
 let state = null;
 let rulesOpen = false;
+let roomManagerOpen = false;
 let busy = false;
 let name = localStorage.getItem('td:name') || '';
 let lastRoomId = localStorage.getItem('td:lastRoom') || '';
@@ -777,6 +1028,7 @@ socket.on('lobbyState', (nextRooms) => {
 socket.on('state', (next) => {
   const firstState = !state;
   state = next;
+  if (!state?.legal?.canReset) roomManagerOpen = false;
   if (settingsDraft && settingsEqual(next.settings, settingsDraft)) settingsDraft = null;
   lastRoomId = next.roomId;
   localStorage.setItem('td:lastRoom', lastRoomId);
@@ -794,6 +1046,7 @@ socket.on('leftRoom', ({ roomId }) => {
   localStorage.removeItem(tokenKey(roomId));
   localStorage.removeItem('td:lastRoom');
   state = null;
+  roomManagerOpen = false;
   settingsDraft = null;
   lastRoomId = '';
   lastSpecialId = null;
@@ -816,6 +1069,7 @@ socket.on('roomReset', ({ roomId }) => {
   localStorage.removeItem(tokenKey(roomId));
   localStorage.removeItem('td:lastRoom');
   state = null;
+  roomManagerOpen = false;
   settingsDraft = null;
   lastRoomId = '';
   lastSpecialId = null;
@@ -983,6 +1237,7 @@ function bgmControlHTML(extraClass = '') {
 
 function bindJoinRoomButtons() {
   document.querySelectorAll('.join-room').forEach((button) => button.addEventListener('click', () => joinRoom(button.dataset.roomId)));
+  document.querySelectorAll('.reset-room').forEach((button) => button.addEventListener('click', () => resetRoomFromTitle(button.dataset.roomId)));
 }
 
 function updateLandingRoomGrid() {
@@ -1019,7 +1274,7 @@ function roomCardHTML(room) {
     <div class="room-card-head"><div><span class="room-number">第${room.id}対局室</span><span class="room-status ${statusClass}">${esc(room.label)}</span></div><strong>${room.playerCount}/${room.maxPlayers}</strong></div>
     <div class="room-members">${names}</div>
     <div class="room-meta">人間 ${room.humanCount}人　CPU ${room.cpuCount}人</div>
-    <button class="btn ${disabled ? '' : 'primary'} join-room" data-room-id="${room.id}" ${disabled ? 'disabled' : ''}>${disabled ? (full ? '満員' : '対局中') : 'この部屋に入る'}</button>
+    <div class="room-card-actions"><button class="btn ${disabled ? '' : 'primary'} join-room" data-room-id="${room.id}" ${disabled ? 'disabled' : ''}>${disabled ? (full ? '満員' : '対局中') : 'この部屋に入る'}</button><button class="btn ghost-danger compact reset-room" data-room-id="${room.id}">リセット</button></div>
   </article>`;
 }
 
@@ -1027,6 +1282,7 @@ function topbarHTML() {
   const self = state.players.find((p) => p.id === state.selfId);
   return `${connectionBanner()}<header class="topbar"><div><span class="room-title">第${state.roomId}対局室</span><span class="version-badge">${APP_VERSION}</span>${self?.isHost ? '<span class="badge gold">部屋主</span>' : ''}</div><div class="top-actions">
     ${bgmControlHTML()}
+    ${self?.isHost ? '<button class="icon-btn manage" id="roomManageBtn">部屋管理</button>' : ''}
     <button class="icon-btn" id="copyUrlBtn">URL</button>
     <button class="icon-btn" id="rulesBtn">遊び方</button>
     <button class="icon-btn" id="leaveBtn">退出</button>
@@ -1053,13 +1309,12 @@ function lobbyHTML() {
       <label class="check-row"><span>4人用 2対2チーム戦</span><input id="teamMode" type="checkbox" ${shownSettings.teamMode ? 'checked' : ''} ${state.legal.canEditSettings ? '' : 'disabled'}></label>
       ${state.legal.canStart ? '<button class="btn primary big" id="startBtn">対局を始める</button>' : `<p class="small-note">${self?.isHost ? '2人以上そろうと開始できます。' : '部屋主が開始するまでお待ちください。'}</p>`}
     </div></div>
-    ${hostControlsHTML()}
-  </section></main>${rulesOpen ? rulesHTML() : ''}</div>`;
+  </section></main>${roomManagerOverlayHTML()}${rulesOpen ? rulesHTML() : ''}</div>`;
 }
 
-function hostControlsHTML() {
-  if (!state.legal.canReset) return '';
-  return `<div class="card danger-zone"><h3>部屋管理</h3><p class="small-note">通常リセットは参加者を残して設定画面へ戻します。完全初期化は全員を退出させ、空室に戻します。</p><div class="action-row"><button class="btn danger" id="resetMatchBtn">対局を通常リセット</button><button class="btn ghost-danger" id="hardResetBtn">部屋を完全初期化</button></div></div>`;
+function roomManagerOverlayHTML() {
+  if (!roomManagerOpen || !state?.legal?.canReset) return '';
+  return `<div class="overlay" id="roomManagerOverlay"><section class="modal room-manager"><h2>部屋管理</h2><p class="small-note">通常リセットは参加者を残して設定画面へ戻します。完全初期化は全員を退出させ、空室へ戻します。</p><div class="room-manager-actions"><button class="btn danger" id="resetMatchBtn">対局を通常リセット</button><button class="btn ghost-danger" id="hardResetBtn">部屋を完全初期化</button></div><div class="modal-actions"><button class="btn ghost" id="closeRoomManagerBtn">閉じる</button></div></section></div>`;
 }
 
 function rowTiles(items) {
@@ -1106,7 +1361,7 @@ function gameHTML() {
     <div class="battle-card ${battleRed}"><div class="battle-head"><div><div class="battle-title">${esc(state.battlefield?.name || '')}</div><div class="battle-short">${esc(state.battlefield?.short || '')}</div></div><div class="hidden-pile" title="このラウンドで配られず、内容が分からない牌"><span class="mini-back" aria-hidden="true"></span><span>隠し牌 <strong>${hiddenCount}</strong>枚</span></div></div><div class="battle-detail">${esc(state.battlefield?.detail || '')}／奥義牌上がりは1点・ボーナスなし</div></div>
     ${state.teamScores ? `<div class="score-strip"><div>チームA <strong>${state.teamScores.A}点</strong></div><div>チームB <strong>${state.teamScores.B}点</strong></div></div>` : ''}
     <div class="center-status">${attack}</div><div class="players-grid count-${state.players.length}">${players}</div>
-  </section><aside class="side-panel"><div class="card"><h3>第${state.roundNumber}局</h3><div class="action-message">${esc(actionText())}</div><p class="small-note">${esc(battlefieldModeNote())}</p></div><div class="card"><h3>進行ログ</h3><div class="log">${logs}</div></div>${hostControlsHTML()}</aside></div></main>${handHTML()}${resultOverlayHTML()}${rulesOpen ? rulesHTML() : ''}</div>`;
+  </section><aside class="side-panel"><div class="card"><h3>第${state.roundNumber}局</h3><div class="action-message">${esc(actionText())}</div><p class="small-note">${esc(battlefieldModeNote())}</p></div><div class="card"><h3>進行ログ</h3><div class="log">${logs}</div></div></aside></div></main>${handHTML()}${resultOverlayHTML()}${roomManagerOverlayHTML()}${rulesOpen ? rulesHTML() : ''}</div>`;
 }
 
 function resultOverlayHTML() {
@@ -1147,6 +1402,23 @@ function render() {
   }
 }
 
+async function resetRoomFromTitle(roomId) {
+  const target = String(roomId);
+  if (!confirm(`第${target}対局室を完全リセットします。対局中の場合、参加者全員がタイトルへ戻ります。よろしいですか？`)) return;
+  try {
+    await socket.resetRoom(target);
+    localStorage.removeItem(tokenKey(target));
+    if (lastRoomId === target) {
+      localStorage.removeItem('td:lastRoom');
+      lastRoomId = '';
+    }
+    await socket.refreshLobby();
+    showToast(`第${target}対局室を完全リセットしました。`, false);
+  } catch (error) {
+    showToast(error.message || '部屋をリセットできませんでした。');
+  }
+}
+
 function joinRoom(roomId) {
   name = document.querySelector('#nameInput')?.value.trim() || name || '名無し';
   localStorage.setItem('td:name', name);
@@ -1159,6 +1431,7 @@ function joinRoom(roomId) {
 
 function confirmReset(message, eventName) {
   if (!confirm(message)) return;
+  roomManagerOpen = false;
   emit(eventName);
 }
 
@@ -1185,6 +1458,9 @@ function bind() {
     } catch { showToast('URLをコピーできませんでした。'); }
   }));
   document.querySelectorAll('#rulesBtn').forEach((button) => button.addEventListener('click', () => { rulesOpen = true; render(); }));
+  document.querySelector('#roomManageBtn')?.addEventListener('click', () => { roomManagerOpen = true; render(); });
+  document.querySelector('#closeRoomManagerBtn')?.addEventListener('click', () => { roomManagerOpen = false; render(); });
+  document.querySelector('#roomManagerOverlay')?.addEventListener('click', (event) => { if (event.target.id === 'roomManagerOverlay') { roomManagerOpen = false; render(); } });
   document.querySelector('#closeRulesBtn')?.addEventListener('click', () => { rulesOpen = false; render(); });
   document.querySelector('#rulesOverlay')?.addEventListener('click', (event) => { if (event.target.id === 'rulesOverlay') { rulesOpen = false; render(); } });
   document.querySelector('#leaveBtn')?.addEventListener('click', () => {
