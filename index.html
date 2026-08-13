@@ -589,6 +589,134 @@ body.game-active { overflow:hidden; }
   .game-shell .desktop-log-card { display:none !important; }
 }
 
+
+
+/* v5.8: PC戦場カード拡大／スマホ戦場詳細ポップアップ */
+@media (min-width:901px) {
+  /* PCはプレイヤー欄を縦に圧縮して戦場カードの視認性を優先 */
+  .game-shell .battle-card {
+    padding:14px 18px;
+    min-height:92px;
+    display:flex;
+    flex-direction:column;
+    justify-content:center;
+  }
+  .game-shell .battle-title { font-size:25px; line-height:1.05; }
+  .game-shell .battle-short { margin-top:5px; font-size:15px; font-weight:800; }
+  .game-shell .battle-detail { margin-top:8px; font-size:14px; line-height:1.35; }
+  .game-shell .hidden-pile { padding:8px 11px; font-size:13px; }
+  .game-shell .hidden-pile .mini-back { width:22px; height:30px; }
+
+  .game-shell .players-grid { flex:0 1 auto; align-content:start; }
+  .game-shell .players-grid.count-2,
+  .game-shell .players-grid.count-3 { grid-auto-rows:minmax(92px,105px); }
+  .game-shell .players-grid.count-4,
+  .game-shell .players-grid.count-5 { grid-auto-rows:minmax(92px,104px); }
+  .game-shell .player-board { padding:4px 6px; border-radius:10px; }
+  .game-shell .player-head { margin-bottom:2px; min-height:20px; }
+  .game-shell .player-name { font-size:12px; }
+  .game-shell .player-head .small-note { font-size:8px; line-height:1; }
+  .game-shell .score { font-size:15px; }
+  .game-shell .rows { gap:2px; }
+  .game-shell .row { padding:1px 3px; min-height:31px; }
+  .game-shell .row-label { width:28px; flex-basis:28px; font-size:9px; }
+  .game-shell .player-board .tile { width:25px; height:31px; flex-basis:25px; font-size:14px; border-radius:5px; }
+  .game-shell .player-board .tile.wild { font-size:13px; }
+  .game-shell .player-board .tile.wild small { display:none; }
+}
+
+
+@media (min-width:901px) and (max-height:800px) {
+  .game-shell .battle-card { min-height:74px; padding:10px 14px; }
+  .game-shell .battle-title { font-size:21px; }
+  .game-shell .battle-short { font-size:13px; margin-top:3px; }
+  .game-shell .battle-detail { font-size:12px; margin-top:5px; }
+  .game-shell .players-grid.count-2,
+  .game-shell .players-grid.count-3,
+  .game-shell .players-grid.count-4,
+  .game-shell .players-grid.count-5 { grid-auto-rows:minmax(78px,88px); }
+  .game-shell .player-board .tile { width:22px; height:28px; flex-basis:22px; font-size:12px; }
+  .game-shell .row { min-height:28px; }
+}
+@media (min-width:901px) and (max-height:650px) {
+  .game-shell .battle-card { min-height:62px; padding:7px 10px; }
+  .game-shell .battle-title { font-size:18px; }
+  .game-shell .battle-short { font-size:11px; }
+  .game-shell .battle-detail { font-size:10px; margin-top:3px; }
+  .game-shell .players-grid.count-2,
+  .game-shell .players-grid.count-3,
+  .game-shell .players-grid.count-4,
+  .game-shell .players-grid.count-5 { grid-auto-rows:minmax(66px,74px); }
+  .game-shell .player-head .small-note { display:none; }
+  .game-shell .player-board .tile { width:19px; height:24px; flex-basis:19px; font-size:11px; }
+  .game-shell .row { min-height:24px; }
+}
+
+/* スマホでは戦場欄はサイズ据え置き。タップで詳細表示 */
+@media (max-width:700px) and (orientation:portrait) {
+  .game-shell .battle-card.battlefield-tappable {
+    cursor:pointer;
+    position:relative;
+    padding-right:64px;
+    touch-action:manipulation;
+  }
+  .game-shell .battle-card.battlefield-tappable::after {
+    content:'タップで拡大';
+    position:absolute;
+    right:5px;
+    bottom:4px;
+    padding:2px 4px;
+    border-radius:5px;
+    border:1px solid #ffffff30;
+    background:#071015b8;
+    color:#dce9ec;
+    font-size:7px;
+    line-height:1;
+    pointer-events:none;
+  }
+}
+
+.battlefield-modal {
+  width:min(92vw,560px);
+  padding:18px;
+}
+.battlefield-modal-card {
+  border:1px solid #2e7180;
+  border-radius:18px;
+  padding:20px;
+  background:linear-gradient(135deg,#12313a,#1a4651);
+}
+.battlefield-modal-card.red {
+  background:linear-gradient(135deg,#39191f,#4e2028);
+  border-color:#813844;
+}
+.battlefield-modal-title { font-size:30px; font-weight:1000; line-height:1.05; }
+.battlefield-modal-short { margin-top:8px; font-size:17px; font-weight:900; }
+.battlefield-modal-detail {
+  margin-top:18px;
+  padding:14px;
+  border-radius:12px;
+  background:#05090d63;
+  font-size:18px;
+  font-weight:900;
+  line-height:1.6;
+}
+.battlefield-modal-meta {
+  margin-top:14px;
+  display:flex;
+  flex-wrap:wrap;
+  align-items:center;
+  gap:8px;
+}
+.battlefield-modal-meta .hidden-pile { font-size:14px; }
+@media (max-width:700px) {
+  .battlefield-modal { width:min(94vw,480px); padding:12px; }
+  .battlefield-modal-card { padding:16px; }
+  .battlefield-modal-title { font-size:26px; }
+  .battlefield-modal-short { font-size:15px; }
+  .battlefield-modal-detail { margin-top:14px; padding:12px; font-size:16px; }
+}
+
 </style>
 </head>
 <body>
@@ -784,7 +912,7 @@ const socket = new TigerDragonSocket(window.TD_SERVER_URL);
 const app = document.querySelector('#app');
 const toast = document.querySelector('#toast');
 const specialLayer = document.querySelector('#specialLayer');
-const APP_VERSION = 'v5.7';
+const APP_VERSION = 'v5.8';
 const ASSET_VERSION = '5.4';
 
 let rooms = [];
@@ -792,6 +920,7 @@ let state = null;
 let rulesOpen = false;
 let roomManagerOpen = false;
 let mobileLogOpen = false;
+let battlefieldModalOpen = false;
 let selectedTileId = null;
 let selectedTileAction = null;
 let busy = false;
@@ -1395,15 +1524,22 @@ function gameHTML() {
   const battleRed = ['storm','swamp','cave','cliff','fog'].includes(state.battlefield?.id) ? 'red' : '';
   const hiddenCount = hiddenTileCount();
   return `<div class="shell game-shell">${topbarHTML()}<main class="main"><div class="game-layout"><section class="table-area">
-    <div class="battle-card ${battleRed}"><div class="battle-head"><div><div class="battle-title">${esc(state.battlefield?.name || '')}</div><div class="battle-short">${esc(state.battlefield?.short || '')}</div></div><div class="hidden-pile" title="このラウンドで配られず、内容が分からない牌"><span class="mini-back" aria-hidden="true"></span><span>隠し牌 <strong>${hiddenCount}</strong>枚</span></div></div><div class="battle-detail">${esc(state.battlefield?.detail || '')}／奥義牌上がりは1点・ボーナスなし</div></div>
+    <div class="battle-card ${battleRed} battlefield-tappable" id="battlefieldCard" role="button" tabindex="0" aria-label="現在の戦場カードを拡大表示"><div class="battle-head"><div><div class="battle-title">${esc(state.battlefield?.name || '')}</div><div class="battle-short">${esc(state.battlefield?.short || '')}</div></div><div class="hidden-pile" title="このラウンドで配られず、内容が分からない牌"><span class="mini-back" aria-hidden="true"></span><span>隠し牌 <strong>${hiddenCount}</strong>枚</span></div></div><div class="battle-detail">${esc(state.battlefield?.detail || '')}／奥義牌上がりは1点・ボーナスなし</div></div>
     ${state.teamScores ? `<div class="score-strip"><div>チームA <strong>${state.teamScores.A}点</strong></div><div>チームB <strong>${state.teamScores.B}点</strong></div></div>` : ''}
     <div class="center-status">${attack}</div><div class="players-grid count-${state.players.length}">${players}</div>
-  </section><aside class="side-panel"><div class="card"><h3>第${state.roundNumber}局</h3><div class="action-message">${esc(actionText())}</div><p class="small-note">${esc(battlefieldModeNote())}</p></div><div class="card desktop-log-card"><h3>進行ログ</h3><div class="log">${logs}</div></div></aside></div></main>${handHTML()}${resultOverlayHTML()}${mobileLogOverlayHTML(logs)}${roomManagerOverlayHTML()}${rulesOpen ? rulesHTML() : ''}</div>`;
+  </section><aside class="side-panel"><div class="card"><h3>第${state.roundNumber}局</h3><div class="action-message">${esc(actionText())}</div><p class="small-note">${esc(battlefieldModeNote())}</p></div><div class="card desktop-log-card"><h3>進行ログ</h3><div class="log">${logs}</div></div></aside></div></main>${handHTML()}${resultOverlayHTML()}${mobileLogOverlayHTML(logs)}${battlefieldOverlayHTML()}${roomManagerOverlayHTML()}${rulesOpen ? rulesHTML() : ''}</div>`;
 }
 
 function mobileLogOverlayHTML(logs) {
   if (!mobileLogOpen) return '';
   return `<div class="overlay" id="mobileLogOverlay"><section class="modal mobile-log-modal"><div class="section-head"><h2>進行ログ</h2><button class="btn compact" id="closeMobileLogBtn">閉じる</button></div><div class="log mobile-log-list">${logs || '<div class="small-note">まだログはありません。</div>'}</div></section></div>`;
+}
+
+function battlefieldOverlayHTML() {
+  if (!battlefieldModalOpen || !state?.battlefield) return '';
+  const battleRed = ['storm','swamp','cave','cliff','fog'].includes(state.battlefield.id) ? 'red' : '';
+  const hiddenCount = hiddenTileCount();
+  return `<div class="overlay" id="battlefieldOverlay"><section class="modal battlefield-modal"><div class="section-head"><h2>現在の戦場</h2><button class="btn compact" id="closeBattlefieldBtn">閉じる</button></div><div class="battlefield-modal-card ${battleRed}"><div class="battlefield-modal-title">${esc(state.battlefield.name || '')}</div><div class="battlefield-modal-short">${esc(state.battlefield.short || '')}</div><div class="battlefield-modal-detail">${esc(state.battlefield.detail || '')}</div><div class="battlefield-modal-meta"><div class="hidden-pile"><span class="mini-back" aria-hidden="true"></span><span>隠し牌 <strong>${hiddenCount}</strong>枚</span></div><span class="badge">奥義牌上がり：1点・ボーナスなし</span></div></div></section></div>`;
 }
 
 function resultOverlayHTML() {
@@ -1426,7 +1562,7 @@ function rulesHTML() {
 
 function render() {
   const gameActive = Boolean(state && state.status !== 'lobby');
-  if (!gameActive) mobileLogOpen = false;
+  if (!gameActive) { mobileLogOpen = false; battlefieldModalOpen = false; }
   const legalNow = state?.legal?.tileIds || [];
   if (!selectedTileId || selectedTileAction !== state?.legal?.action || !legalNow.includes(selectedTileId)) { selectedTileId = null; selectedTileAction = null; }
   document.body.classList.toggle('game-active', gameActive);
@@ -1512,6 +1648,12 @@ function bind() {
   document.querySelector('#mobileLogBtn')?.addEventListener('click', () => { mobileLogOpen = true; render(); });
   document.querySelector('#closeMobileLogBtn')?.addEventListener('click', () => { mobileLogOpen = false; render(); });
   document.querySelector('#mobileLogOverlay')?.addEventListener('click', (event) => { if (event.target.id === 'mobileLogOverlay') { mobileLogOpen = false; render(); } });
+  const battlefieldCard = document.querySelector('#battlefieldCard');
+  const openBattlefield = () => { if (window.innerWidth <= 700 || window.matchMedia?.('(pointer: coarse)').matches) { battlefieldModalOpen = true; render(); } };
+  battlefieldCard?.addEventListener('click', openBattlefield);
+  battlefieldCard?.addEventListener('keydown', (event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); openBattlefield(); } });
+  document.querySelector('#closeBattlefieldBtn')?.addEventListener('click', () => { battlefieldModalOpen = false; render(); });
+  document.querySelector('#battlefieldOverlay')?.addEventListener('click', (event) => { if (event.target.id === 'battlefieldOverlay') { battlefieldModalOpen = false; render(); } });
   document.querySelector('#closeRoomManagerBtn')?.addEventListener('click', () => { roomManagerOpen = false; render(); });
   document.querySelector('#roomManagerOverlay')?.addEventListener('click', (event) => { if (event.target.id === 'roomManagerOverlay') { roomManagerOpen = false; render(); } });
   document.querySelector('#closeRulesBtn')?.addEventListener('click', () => { rulesOpen = false; render(); });
