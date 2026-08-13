@@ -563,6 +563,32 @@ body.game-active { overflow:hidden; }
   .game-shell .hand .tile.wild { font-size:27px; }
 }
 
+/* v5.7: スマホログ・二段階タップ */
+.mobile-log-btn { display:none; }
+.tile.selected-for-play {
+  transform:translateY(-10px) scale(1.06) !important;
+  outline:3px solid var(--gold) !important;
+  box-shadow:0 4px 0 #afb4b7,0 0 0 5px rgba(239,193,74,.28),0 8px 14px #0009 !important;
+  z-index:4;
+}
+.mobile-log-modal { width:min(92vw,520px); max-height:76dvh; display:flex; flex-direction:column; }
+.mobile-log-list { max-height:64dvh; overflow-y:auto; min-height:120px; }
+@media (max-width:700px) and (orientation:portrait) {
+  .game-shell .desktop-url-btn { display:none !important; }
+  .game-shell .mobile-log-btn { display:inline-flex !important; }
+  .game-shell .desktop-log-card { display:none !important; }
+  .game-shell .side-panel { min-height:0 !important; }
+  .mobile-log-modal { width:calc(100vw - 20px); max-height:72dvh; padding:12px; }
+  .mobile-log-modal h2 { margin:0; font-size:18px; }
+  .mobile-log-list { max-height:58dvh; font-size:12px; }
+}
+
+@media (max-width:900px) and (hover:none) and (pointer:coarse) {
+  .game-shell .desktop-url-btn { display:none !important; }
+  .game-shell .mobile-log-btn { display:inline-flex !important; }
+  .game-shell .desktop-log-card { display:none !important; }
+}
+
 </style>
 </head>
 <body>
@@ -758,13 +784,16 @@ const socket = new TigerDragonSocket(window.TD_SERVER_URL);
 const app = document.querySelector('#app');
 const toast = document.querySelector('#toast');
 const specialLayer = document.querySelector('#specialLayer');
-const APP_VERSION = 'v5.6';
+const APP_VERSION = 'v5.7';
 const ASSET_VERSION = '5.4';
 
 let rooms = [];
 let state = null;
 let rulesOpen = false;
 let roomManagerOpen = false;
+let mobileLogOpen = false;
+let selectedTileId = null;
+let selectedTileAction = null;
 let busy = false;
 let name = localStorage.getItem('td:name') || '';
 let lastRoomId = localStorage.getItem('td:lastRoom') || '';
@@ -1229,7 +1258,7 @@ function showSpecial(event) {
 function tileHTML(tile, options = {}) {
   if (!tile) return `<span class="tile back ${options.large ? 'large' : ''}"></span>`;
   const label = tile.kind === 'number' ? tile.value : tile.kind === 'tiger' ? '虎<br><small>奥義</small>' : '龍<br><small>奥義</small>';
-  const classes = ['tile', tile.color, tile.kind !== 'number' ? 'wild' : '', options.large ? 'large' : '', options.clickable ? 'clickable' : '', options.disabled ? 'disabled' : '', tile.revealed || options.revealed ? 'revealed' : ''].filter(Boolean).join(' ');
+  const classes = ['tile', tile.color, tile.kind !== 'number' ? 'wild' : '', options.large ? 'large' : '', options.clickable ? 'clickable' : '', options.disabled ? 'disabled' : '', options.selected ? 'selected-for-play' : '', tile.revealed || options.revealed ? 'revealed' : ''].filter(Boolean).join(' ');
   if (options.clickable) return `<button class="${classes}" data-tile-id="${tile.id}" aria-label="${tile.kind === 'number' ? tile.value : tile.kind}">${label}</button>`;
   return `<span class="${classes}">${label}</span>`;
 }
@@ -1290,7 +1319,8 @@ function topbarHTML() {
   return `${connectionBanner()}<header class="topbar"><div><span class="room-title">第${state.roomId}対局室</span><span class="version-badge">${APP_VERSION}</span>${self?.isHost ? '<span class="badge gold">部屋主</span>' : ''}</div><div class="top-actions">
     ${bgmControlHTML()}
     ${self?.isHost ? '<button class="icon-btn manage" id="roomManageBtn">部屋管理</button>' : ''}
-    <button class="icon-btn" id="copyUrlBtn">URL</button>
+    <button class="icon-btn desktop-url-btn" id="copyUrlBtn">URL</button>
+    <button class="icon-btn mobile-log-btn" id="mobileLogBtn">ログ</button>
     <button class="icon-btn" id="rulesBtn">遊び方</button>
     <button class="icon-btn" id="leaveBtn">退出</button>
   </div></header>`;
@@ -1354,7 +1384,7 @@ function actionText() {
 function handHTML() {
   const action = state.legal.action;
   const legalIds = state.legal.tileIds || [];
-  const tiles = state.hand.map((tile) => tileHTML(tile, { clickable:legalIds.includes(tile.id), disabled:!legalIds.includes(tile.id) })).join('');
+  const tiles = state.hand.map((tile) => tileHTML(tile, { clickable:legalIds.includes(tile.id), disabled:!legalIds.includes(tile.id), selected:selectedTileId === tile.id && selectedTileAction === action })).join('');
   return `<footer class="hand-zone"><div class="hand-head"><div><strong>あなたの手牌</strong>　<span class="action-message">${esc(actionText())}</span></div>${state.legal.canPass ? '<button class="btn danger" id="passBtn">パス</button>' : ''}</div><div class="hand">${tiles || '<span class="small-note">手牌はありません</span>'}</div></footer>`;
 }
 
@@ -1368,7 +1398,12 @@ function gameHTML() {
     <div class="battle-card ${battleRed}"><div class="battle-head"><div><div class="battle-title">${esc(state.battlefield?.name || '')}</div><div class="battle-short">${esc(state.battlefield?.short || '')}</div></div><div class="hidden-pile" title="このラウンドで配られず、内容が分からない牌"><span class="mini-back" aria-hidden="true"></span><span>隠し牌 <strong>${hiddenCount}</strong>枚</span></div></div><div class="battle-detail">${esc(state.battlefield?.detail || '')}／奥義牌上がりは1点・ボーナスなし</div></div>
     ${state.teamScores ? `<div class="score-strip"><div>チームA <strong>${state.teamScores.A}点</strong></div><div>チームB <strong>${state.teamScores.B}点</strong></div></div>` : ''}
     <div class="center-status">${attack}</div><div class="players-grid count-${state.players.length}">${players}</div>
-  </section><aside class="side-panel"><div class="card"><h3>第${state.roundNumber}局</h3><div class="action-message">${esc(actionText())}</div><p class="small-note">${esc(battlefieldModeNote())}</p></div><div class="card"><h3>進行ログ</h3><div class="log">${logs}</div></div></aside></div></main>${handHTML()}${resultOverlayHTML()}${roomManagerOverlayHTML()}${rulesOpen ? rulesHTML() : ''}</div>`;
+  </section><aside class="side-panel"><div class="card"><h3>第${state.roundNumber}局</h3><div class="action-message">${esc(actionText())}</div><p class="small-note">${esc(battlefieldModeNote())}</p></div><div class="card desktop-log-card"><h3>進行ログ</h3><div class="log">${logs}</div></div></aside></div></main>${handHTML()}${resultOverlayHTML()}${mobileLogOverlayHTML(logs)}${roomManagerOverlayHTML()}${rulesOpen ? rulesHTML() : ''}</div>`;
+}
+
+function mobileLogOverlayHTML(logs) {
+  if (!mobileLogOpen) return '';
+  return `<div class="overlay" id="mobileLogOverlay"><section class="modal mobile-log-modal"><div class="section-head"><h2>進行ログ</h2><button class="btn compact" id="closeMobileLogBtn">閉じる</button></div><div class="log mobile-log-list">${logs || '<div class="small-note">まだログはありません。</div>'}</div></section></div>`;
 }
 
 function resultOverlayHTML() {
@@ -1391,6 +1426,9 @@ function rulesHTML() {
 
 function render() {
   const gameActive = Boolean(state && state.status !== 'lobby');
+  if (!gameActive) mobileLogOpen = false;
+  const legalNow = state?.legal?.tileIds || [];
+  if (!selectedTileId || selectedTileAction !== state?.legal?.action || !legalNow.includes(selectedTileId)) { selectedTileId = null; selectedTileAction = null; }
   document.body.classList.toggle('game-active', gameActive);
   document.documentElement.classList.toggle('game-active', gameActive);
   const previousNameInput = document.querySelector('#nameInput');
@@ -1415,13 +1453,16 @@ async function resetRoomFromTitle(roomId) {
   const target = String(roomId);
   if (!confirm(`第${target}対局室を完全リセットします。対局中の場合、参加者全員がタイトルへ戻ります。よろしいですか？`)) return;
   try {
-    await socket.resetRoom(target);
+    const result = await socket.resetRoom(target);
+    if (result?.summary) { const index = rooms.findIndex((room) => String(room.id) === target); if (index >= 0) rooms[index] = result.summary; updateLandingRoomGrid(); }
     localStorage.removeItem(tokenKey(target));
     if (lastRoomId === target) {
       localStorage.removeItem('td:lastRoom');
       lastRoomId = '';
     }
     await socket.refreshLobby();
+    const resetRoom = rooms.find((room) => String(room.id) === target);
+    if (resetRoom && resetRoom.playerCount !== 0) throw new Error('リセット後も参加者が残っています。Cloudflare側をv5.7へ更新してください。');
     showToast(`第${target}対局室を完全リセットしました。`, false);
   } catch (error) {
     showToast(error.message || '部屋をリセットできませんでした。');
@@ -1468,6 +1509,9 @@ function bind() {
   }));
   document.querySelectorAll('#rulesBtn').forEach((button) => button.addEventListener('click', () => { rulesOpen = true; render(); }));
   document.querySelector('#roomManageBtn')?.addEventListener('click', () => { roomManagerOpen = true; render(); });
+  document.querySelector('#mobileLogBtn')?.addEventListener('click', () => { mobileLogOpen = true; render(); });
+  document.querySelector('#closeMobileLogBtn')?.addEventListener('click', () => { mobileLogOpen = false; render(); });
+  document.querySelector('#mobileLogOverlay')?.addEventListener('click', (event) => { if (event.target.id === 'mobileLogOverlay') { mobileLogOpen = false; render(); } });
   document.querySelector('#closeRoomManagerBtn')?.addEventListener('click', () => { roomManagerOpen = false; render(); });
   document.querySelector('#roomManagerOverlay')?.addEventListener('click', (event) => { if (event.target.id === 'roomManagerOverlay') { roomManagerOpen = false; render(); } });
   document.querySelector('#closeRulesBtn')?.addEventListener('click', () => { rulesOpen = false; render(); });
@@ -1483,7 +1527,7 @@ function bind() {
   document.querySelector('#cpuLevel')?.addEventListener('change', saveSettingsFromForm);
   document.querySelector('#teamMode')?.addEventListener('change', saveSettingsFromForm);
   document.querySelector('#startBtn')?.addEventListener('click', saveSettingsThenStart);
-  document.querySelector('#passBtn')?.addEventListener('click', () => emit('pass'));
+  document.querySelector('#passBtn')?.addEventListener('click', () => { selectedTileId = null; selectedTileAction = null; emit('pass'); });
   document.querySelector('#nextBtn')?.addEventListener('click', () => emit('nextRound'));
   document.querySelector('#restartBtn')?.addEventListener('click', () => emit('restartGame'));
   document.querySelectorAll('#resetMatchBtn').forEach((button) => button.addEventListener('click', () => confirmReset('参加者を残して対局を設定画面へ戻します。よろしいですか？', 'resetMatch')));
@@ -1491,6 +1535,16 @@ function bind() {
   document.querySelectorAll('[data-tile-id]').forEach((button) => button.addEventListener('click', () => {
     const tileId = button.dataset.tileId;
     const action = state.legal.action;
+    const needsConfirmTap = action !== 'REVEAL' && (window.matchMedia?.('(pointer: coarse)').matches || window.innerWidth <= 700);
+    if (needsConfirmTap && (selectedTileId !== tileId || selectedTileAction !== action)) {
+      selectedTileId = tileId;
+      selectedTileAction = action;
+      document.querySelectorAll('.hand .selected-for-play').forEach((tileButton) => tileButton.classList.remove('selected-for-play'));
+      button.classList.add('selected-for-play');
+      return;
+    }
+    selectedTileId = null;
+    selectedTileAction = null;
     if (action === 'ATTACK') emit('playAttack', { tileId });
     else if (action === 'DEFEND') emit('defend', { tileId });
     else if (action === 'BONUS') emit('claimBonus', { tileId });
