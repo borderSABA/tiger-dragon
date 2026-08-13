@@ -385,10 +385,17 @@ body.game-active { overflow:hidden; }
   .room-card-actions { grid-template-columns:1fr; }
 }
 
-/* v5.5: スマホ縦持ち専用UI */
+/* v5.6: スマホ縦持ち専用UI（対局開始後のみスクロール固定） */
 @media (max-width:700px) and (orientation:portrait) {
-  html,body,#app { width:100%; height:100%; min-height:0; overflow:hidden; }
-  body.game-active { overscroll-behavior:none; touch-action:manipulation; }
+  /* タイトル・部屋ロビーはスクロール可。対局開始後だけ1画面固定にする */
+  html,body,#app { width:100%; min-height:100%; }
+  html:not(.game-active),
+  html:not(.game-active) body { height:auto; overflow-y:auto; overflow-x:hidden; }
+  html:not(.game-active) #app { height:auto; min-height:100%; overflow:visible; }
+  html.game-active,
+  html.game-active body,
+  html.game-active #app { height:100%; min-height:0; overflow:hidden; overscroll-behavior:none; }
+  body.game-active { touch-action:manipulation; }
   .game-shell { width:100%; height:100dvh; grid-template-rows:auto minmax(0,1fr) auto; overflow:hidden; }
 
   /* トップバーは2段。操作は横一列にして高さを固定 */
@@ -751,7 +758,7 @@ const socket = new TigerDragonSocket(window.TD_SERVER_URL);
 const app = document.querySelector('#app');
 const toast = document.querySelector('#toast');
 const specialLayer = document.querySelector('#specialLayer');
-const APP_VERSION = 'v5.5';
+const APP_VERSION = 'v5.6';
 const ASSET_VERSION = '5.4';
 
 let rooms = [];
@@ -1383,7 +1390,9 @@ function rulesHTML() {
 }
 
 function render() {
-  document.body.classList.toggle('game-active', Boolean(state && state.status !== 'lobby'));
+  const gameActive = Boolean(state && state.status !== 'lobby');
+  document.body.classList.toggle('game-active', gameActive);
+  document.documentElement.classList.toggle('game-active', gameActive);
   const previousNameInput = document.querySelector('#nameInput');
   const wasNameFocused = previousNameInput && document.activeElement === previousNameInput;
   const selectionStart = wasNameFocused ? previousNameInput.selectionStart : null;
