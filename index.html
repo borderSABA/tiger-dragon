@@ -873,6 +873,72 @@ body.game-active { overflow:hidden; }
   .game-shell .hand-zone { height:105px; min-height:105px; max-height:105px; flex-basis:105px; }
   .game-shell .hand-head { height:24px; min-height:24px; max-height:24px; }
 }
+
+
+/* v5.11: BGM初期音量を5%に変更 */
+/* v5.10: 崖の公開牌をヘッダー内へ移動し、攻め/受け領域を圧迫しない */
+.game-shell .player-head {
+  display:grid;
+  grid-template-columns:minmax(0,1fr) auto auto;
+  align-items:center;
+  column-gap:7px;
+}
+.game-shell .player-head-main { min-width:0; overflow:hidden; }
+.game-shell .player-cliff-reveal {
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:3px;
+  min-width:0;
+  white-space:nowrap;
+}
+.game-shell .player-cliff-label {
+  color:var(--muted);
+  font-size:8px;
+  font-weight:800;
+}
+.game-shell .player-cliff-reveal .tile {
+  width:22px;
+  height:27px;
+  flex:0 0 22px;
+  font-size:12px;
+  border-radius:4px;
+  box-shadow:0 1px 0 #afb4b7,0 1px 2px #0006;
+}
+.game-shell .player-cliff-reveal .tile.wild { font-size:11px; }
+.game-shell .player-cliff-reveal .tile.revealed::after {
+  content:"公";
+  top:-4px;
+  right:-4px;
+  padding:1px 3px;
+  font-size:6px;
+}
+
+@media (max-width:700px) and (orientation:portrait) {
+  .game-shell .player-head { column-gap:3px; }
+  .game-shell .player-cliff-label { font-size:6px; }
+  .game-shell .player-cliff-reveal { gap:2px; }
+  .game-shell .player-cliff-reveal .tile {
+    width:17px;
+    height:21px;
+    flex-basis:17px;
+    font-size:10px;
+    box-shadow:none;
+  }
+  .game-shell .player-cliff-reveal .tile.revealed::after { display:none; }
+  .game-shell .player-cliff-reveal .badge { margin-left:0; padding:1px 2px; font-size:6px; }
+}
+
+@media (max-width:700px) and (orientation:portrait) and (max-height:700px) {
+  .game-shell .player-cliff-label { display:none; }
+  .game-shell .player-cliff-reveal .tile {
+    width:14px;
+    height:18px;
+    flex-basis:14px;
+    font-size:8px;
+  }
+}
+
 </style>
 </head>
 <body>
@@ -1068,7 +1134,7 @@ const socket = new TigerDragonSocket(window.TD_SERVER_URL);
 const app = document.querySelector('#app');
 const toast = document.querySelector('#toast');
 const specialLayer = document.querySelector('#specialLayer');
-const APP_VERSION = 'v5.9';
+const APP_VERSION = 'v5.11';
 const ASSET_VERSION = '5.4';
 
 let rooms = [];
@@ -1096,8 +1162,8 @@ let bgmFailedIndexes = new Set();
 let bgmPlaylistLoaded = false;
 let bgmPlaylistPromise = null;
 let bgmRetryTimer = null;
-let bgmVolume = Number(localStorage.getItem('td:bgmVolume') ?? 0);
-if (!Number.isFinite(bgmVolume)) bgmVolume = 0;
+let bgmVolume = Number(localStorage.getItem('td:bgmVolume') ?? 5);
+if (!Number.isFinite(bgmVolume)) bgmVolume = 5;
 bgmVolume = Math.max(0, Math.min(100, Math.round(bgmVolume)));
 bgmAudio.volume = bgmVolume / 100;
 
@@ -1646,9 +1712,11 @@ function rowTiles(items) {
 
 function playerBoardHTML(player) {
   const badges = `${player.isCpu ? '<span class="badge">CPU</span>' : ''}${player.isHost ? '<span class="badge gold">主</span>' : ''}${player.isStarter ? '<span class="badge gold">先攻</span>' : ''}${player.team ? `<span class="badge team-${player.team.toLowerCase()}">${player.team}</span>` : ''}${!player.connected ? '<span class="badge offline">切断中</span>' : ''}`;
+  const cliffReveal = state.battlefield?.id === 'cliff'
+    ? `<div class="player-cliff-reveal"><span class="player-cliff-label">公開</span>${player.revealedTile ? tileHTML(player.revealedTile, { revealed:true }) : player.hasChosenReveal ? '<span class="badge">済</span>' : '<span class="badge offline">未</span>'}</div>`
+    : '';
   return `<article class="player-board ${player.isCurrent ? 'current' : ''} ${player.id === state.selfId ? 'self' : ''}">
-    <div class="player-head"><div><span class="player-name">${esc(player.name)}</span>${badges}<div class="small-note">手牌 ${player.handCount}枚・1周 ${player.bonusCount}</div></div><div class="score">${player.score}点</div></div>
-    ${state.battlefield?.id === 'cliff' ? `<div class="reveal-line"><span>公開牌</span>${player.revealedTile ? tileHTML(player.revealedTile, { revealed:true }) : player.hasChosenReveal ? '<span class="badge">選択済み</span>' : '<span class="badge offline">未選択</span>'}</div>` : ''}
+    <div class="player-head"><div class="player-head-main"><span class="player-name">${esc(player.name)}</span>${badges}<div class="small-note">手牌 ${player.handCount}枚・1周 ${player.bonusCount}</div></div>${cliffReveal}<div class="score">${player.score}点</div></div>
     <div class="rows"><div class="row"><span class="row-label">攻め</span>${rowTiles(player.attackRow)}</div><div class="row"><span class="row-label">受け</span>${rowTiles(player.defendRow)}</div></div>
   </article>`;
 }
