@@ -1,5 +1,22 @@
-# 1行に1曲、github-pages/bgm フォルダ内のMP3ファイル名を書きます。
-# 下の名前に合わせてMP3を置くか、この一覧を実際のファイル名へ変更してください。
-
-
+01 - staple stable.mp3
+02 - 帰り道.mp3
+03 - ambivalent world.mp3
 04 - 恋愛サーキュレーション.mp3
+05 - sugar sweet nightmare.mp3
+06 - 君の知らない物語.mp3
+07 - 二言目.mp3
+08 - marshmallow justice.mp3
+09 - 白金ディスコ.mp3
+10 - ナイショの話.mp3
+11 - perfect slumbers.mp3
+12 - 消えるdaydream.mp3
+14 - happy bite.mp3
+15 - アイヲウタエ.mp3
+16 - the last day of my adolescence.mp3
+17 - 花痕 -shirushi-.mp3
+18 - もうそう♡えくすぷれす.mp3
+19 - white lies.mp3
+20 - その声を覚えてる.mp3
+21 - fast love.mp3
+22 - 木枯らしセンティメント.mp3
+23 - snowdrop.mp3

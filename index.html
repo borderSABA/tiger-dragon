@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#0b1015">
   <meta name="description" content="タイガー＆ドラゴン 身内用ブラウザ対戦版">
   <meta name="robots" content="noindex,nofollow,noarchive">
-  <title>タイガー＆ドラゴン オンライン v5.4</title>
+  <title>タイガー＆ドラゴン オンライン v5.12</title>
   <style>
 :root {
   --bg:#080b0f;
@@ -43,7 +43,8 @@ button:disabled { cursor:not-allowed; opacity:.42; }
 .name-entry label,.field label { color:var(--muted); font-size:13px; }
 input,select { width:100%; background:#0d1116; color:var(--text); border:1px solid var(--line); border-radius:11px; padding:12px 13px; outline:none; }
 input:focus,select:focus { border-color:var(--blue); box-shadow:0 0 0 3px #35bed919; }
-.room-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:13px; }
+.room-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:12px; }
+@media (max-width: 640px) { .room-grid { grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; } }
 .room-card { display:grid; gap:10px; padding:16px; background:#181e25; border:1px solid var(--line); border-radius:16px; }
 .room-card.open { border-color:#2d7969; }
 .room-card.busy { opacity:.8; }
@@ -168,7 +169,7 @@ input:focus,select:focus { border-color:var(--blue); box-shadow:0 0 0 3px #35bed
 @media (max-width:650px) {
   .landing { padding:12px; }
   .hero { padding:20px 14px; }
-  .room-grid { grid-template-columns:1fr; }
+  .room-grid { grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; }
   .name-entry { grid-template-columns:1fr; }
   .main { padding:8px; }
   .players-grid { grid-template-columns:1fr; }
@@ -318,7 +319,7 @@ body.game-active { overflow:hidden; }
   
 
 /* v5.4: タイトル部屋リセット・トップバー部屋管理・手牌拡大 */
-.room-card-actions { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:8px; }
+.room-card-actions { display:grid; grid-template-columns:1fr; gap:8px; }
 .room-card-actions .btn { min-width:0; }
 .icon-btn.manage { border-color:#8a7130; color:#ffe28b; background:#261f0e; }
 .room-manager { width:min(520px,calc(100% - 24px)); }
@@ -1010,13 +1011,12 @@ body.game-active { overflow:hidden; }
 
     async resetRoom(roomId) {
       if (!this.validConfig()) throw new Error('Cloudflare WorkersのURLが設定されていません。');
-      const response = await fetch(`${this.baseUrl}/api/rooms/${encodeURIComponent(roomId)}/reset`, {
+      const response = await fetch(`${this.baseUrl}/reset-empty?roomId=${encodeURIComponent(roomId)}`, {
         method:'POST',
-        headers:{ 'content-type':'application/json' },
         cache:'no-store'
       });
       const data = await response.json().catch(() => ({}));
-      if (!response.ok || data.ok === false) throw new Error(data.error || `部屋のリセットに失敗しました（${response.status}）。`);
+      if (!response.ok || data.ok === false) throw new Error(data.error || `ROOMを初期化できませんでした（${response.status}）。`);
       return data;
     }
 
@@ -1130,12 +1130,119 @@ body.game-active { overflow:hidden; }
   </script>
 
   <script>
-const socket = new TigerDragonSocket(window.TD_SERVER_URL);
+const GAME_ID = 'tiger-dragon';
+const GAME_NAME = 'タイガー＆ドラゴン';
+const MAX_PLAYERS = 5;
+const WORKER_ORIGIN = window.TD_SERVER_URL;
+const COMMON_MANAGER_URL =
+  'https://boardgame-hub-api.naitoryo7110.workers.dev';
+const COMMON_PLAYER_NAME_KEY = 'boardgamePlayerName';
+const ROOM_IDS = ['room1', 'room2', 'room3', 'room4'];
+const APP_VERSION = 'v5.12';
+const ASSET_VERSION = '5.12';
+
+const NAME_DRAFT_KEY = `${GAME_ID}-name-draft`;
+const ACTIVE_ROOM_KEY = `${GAME_ID}-online-room`;
+const ACTIVE_NAME_KEY = `${GAME_ID}-online-active-name`;
+
+function commonSavedName() {
+  return String(
+    localStorage.getItem(COMMON_PLAYER_NAME_KEY) || ''
+  ).trim().slice(0, 32);
+}
+
+function saveCommonNameOnActualStart(playerName) {
+  const saved = String(playerName || '').trim().slice(0, 32);
+  if (!saved) return;
+  localStorage.setItem(COMMON_PLAYER_NAME_KEY, saved);
+}
+
+function tokenKey(roomId) {
+  return `${GAME_ID}-online-token-${roomId}`;
+}
+
+function getToken(roomId) {
+  let token =
+    localStorage.getItem(tokenKey(roomId));
+
+  if (!token) {
+    token = crypto.randomUUID()
+      .replace(/-/g, '');
+
+    localStorage.setItem(
+      tokenKey(roomId),
+      token
+    );
+  }
+
+  return token;
+}
+
+function roomToken(roomId) {
+  return localStorage.getItem(tokenKey(roomId));
+}
+
+function roomNo(roomId) {
+  return ROOM_IDS.indexOf(roomId) >= 0
+    ? ROOM_IDS.indexOf(roomId) + 1
+    : String(roomId || '').replace('room', '');
+}
+
+function roomStatusLabel(room) {
+  if (room.status === 'playing') return 'ゲーム中';
+  if (room.status === 'finished') return '終了';
+  return '待機中';
+}
+
+async function checkRoomJoin(
+  roomId,
+  playerName,
+  token
+) {
+  const url = new URL(
+    `${WORKER_ORIGIN}/join-check`
+  );
+
+  url.searchParams.set('roomId', roomId);
+  url.searchParams.set('name', playerName);
+  url.searchParams.set('token', token);
+
+  const response = await fetch(url, {
+    cache: 'no-store'
+  });
+
+  const data =
+    await response.json().catch(() => ({}));
+
+  if (!response.ok) {
+    throw new Error(
+      data.error || 'ROOMへ参加できません。'
+    );
+  }
+
+  return data;
+}
+
+let actionSeq = 0;
+
+function newActionId(prefix = 'op') {
+  actionSeq =
+    (actionSeq + 1) % 1000000;
+
+  return [
+    prefix,
+    Date.now(),
+    actionSeq,
+    Math.random()
+      .toString(36)
+      .slice(2, 8)
+  ].join('-');
+}
+
+const socket = new TigerDragonSocket(WORKER_ORIGIN);
 const app = document.querySelector('#app');
 const toast = document.querySelector('#toast');
 const specialLayer = document.querySelector('#specialLayer');
-const APP_VERSION = 'v5.11';
-const ASSET_VERSION = '5.4';
 
 let rooms = [];
 let state = null;
@@ -1146,8 +1253,11 @@ let battlefieldModalOpen = false;
 let selectedTileId = null;
 let selectedTileAction = null;
 let busy = false;
-let name = localStorage.getItem('td:name') || '';
-let lastRoomId = localStorage.getItem('td:lastRoom') || '';
+let lastRoomId = localStorage.getItem(ACTIVE_ROOM_KEY) || '';
+let name = lastRoomId
+  ? (localStorage.getItem(ACTIVE_NAME_KEY) || '')
+  : (sessionStorage.getItem(NAME_DRAFT_KEY) ?? commonSavedName() ?? '');
+let commonNameSavedForSession = null;
 let lastSpecialId = null;
 let connectionMessage = '';
 let settingsDraft = null;
@@ -1322,10 +1432,25 @@ function showToast(message, danger = true) {
   showToast.timer = setTimeout(() => toast.classList.remove('show'), 2800);
 }
 
+const ACTION_ID_EVENTS = new Set([
+  'updateSettings',
+  'addCpu',
+  'removePlayer',
+  'startGame',
+  'restartGame',
+  'resetMatch',
+  'hardReset'
+]);
+
+function payloadWithActionId(event, payload = {}) {
+  if (!ACTION_ID_EVENTS.has(event) || payload?.actionId) return payload || {};
+  return { ...(payload || {}), actionId:newActionId(event) };
+}
+
 function emit(event, payload = {}, onSuccess = null) {
   if (busy) return;
   busy = true;
-  socket.emit(event, payload, (result) => {
+  socket.emit(event, payloadWithActionId(event, payload), (result) => {
     busy = false;
     if (!result?.ok) {
       showToast(result?.error || '操作に失敗しました。');
@@ -1334,10 +1459,6 @@ function emit(event, payload = {}, onSuccess = null) {
     onSuccess?.(result);
   });
 }
-
-function tokenKey(roomId) { return `td:token:${roomId}`; }
-
-function roomToken(roomId) { return localStorage.getItem(tokenKey(roomId)); }
 
 function settingsEqual(current, draft) {
   if (!current || !draft) return false;
@@ -1366,7 +1487,7 @@ function sendSettingsPatch(patch, onSuccess = null) {
   clearTimeout(settingsSaveTimer);
   settingsSaveTimer = setTimeout(() => {
     const sending = { ...settingsDraft };
-    socket.emit('updateSettings', sending, (result) => {
+    socket.emit('updateSettings', payloadWithActionId('updateSettings', sending), (result) => {
       if (!result?.ok) {
         settingsDraft = null;
         showToast(result?.error || '設定の保存に失敗しました。');
@@ -1390,14 +1511,14 @@ function saveSettingsThenStart() {
   const patch = readSettingsForm();
   settingsDraft = patch;
   clearTimeout(settingsSaveTimer);
-  socket.emit('updateSettings', patch, (saved) => {
+  socket.emit('updateSettings', payloadWithActionId('updateSettings', patch), (saved) => {
     if (!saved?.ok) {
       settingsDraft = null;
       showToast(saved?.error || '設定の保存に失敗しました。');
       render();
       return;
     }
-    socket.emit('startGame', {}, (started) => {
+    socket.emit('startGame', payloadWithActionId('startGame', {}), (started) => {
       if (!started?.ok) showToast(started?.error || '対局を開始できませんでした。');
     });
   });
@@ -1417,8 +1538,24 @@ socket.on('state', (next) => {
   state = next;
   if (!state?.legal?.canReset) roomManagerOpen = false;
   if (settingsDraft && settingsEqual(next.settings, settingsDraft)) settingsDraft = null;
+
   lastRoomId = next.roomId;
-  localStorage.setItem('td:lastRoom', lastRoomId);
+  localStorage.setItem(ACTIVE_ROOM_KEY, lastRoomId);
+  localStorage.setItem(ACTIVE_NAME_KEY, name);
+
+  const started =
+    next.status === 'playing'
+    || next.gameStarted === true;
+  const sessionId = next.gameSessionId || null;
+  if (
+    started
+    && sessionId
+    && commonNameSavedForSession !== sessionId
+  ) {
+    saveCommonNameOnActualStart(name);
+    commonNameSavedForSession = sessionId;
+  }
+
   render();
   playTick();
   if (next.specialEvent) {
@@ -1431,7 +1568,8 @@ socket.on('state', (next) => {
 socket.on('leftRoom', ({ roomId }) => {
   socket.disconnectRoom();
   localStorage.removeItem(tokenKey(roomId));
-  localStorage.removeItem('td:lastRoom');
+  localStorage.removeItem(ACTIVE_ROOM_KEY);
+  localStorage.removeItem(ACTIVE_NAME_KEY);
   state = null;
   roomManagerOpen = false;
   settingsDraft = null;
@@ -1443,7 +1581,8 @@ socket.on('leftRoom', ({ roomId }) => {
 socket.on('removed', ({ message }) => {
   socket.disconnectRoom();
   if (state?.roomId) localStorage.removeItem(tokenKey(state.roomId));
-  localStorage.removeItem('td:lastRoom');
+  localStorage.removeItem(ACTIVE_ROOM_KEY);
+  localStorage.removeItem(ACTIVE_NAME_KEY);
   state = null;
   settingsDraft = null;
   lastRoomId = '';
@@ -1454,13 +1593,14 @@ socket.on('removed', ({ message }) => {
 socket.on('roomReset', ({ roomId }) => {
   socket.disconnectRoom();
   localStorage.removeItem(tokenKey(roomId));
-  localStorage.removeItem('td:lastRoom');
+  localStorage.removeItem(ACTIVE_ROOM_KEY);
+  localStorage.removeItem(ACTIVE_NAME_KEY);
   state = null;
   roomManagerOpen = false;
   settingsDraft = null;
   lastRoomId = '';
   lastSpecialId = null;
-  showToast(`第${roomId}対局室を完全初期化しました。`, false);
+  showToast(`ROOM ${roomNo(roomId)} を完全初期化しました。`, false);
   render();
 });
 
@@ -1472,7 +1612,8 @@ socket.on('connect', () => {
       socket.emit('joinRoom', { roomId:lastRoomId, name, token }, (result) => {
         if (!result?.ok) {
           localStorage.removeItem(tokenKey(lastRoomId));
-          localStorage.removeItem('td:lastRoom');
+          localStorage.removeItem(ACTIVE_ROOM_KEY);
+          localStorage.removeItem(ACTIVE_NAME_KEY);
           lastRoomId = '';
           state = null;
           render();
@@ -1654,20 +1795,29 @@ function landingHTML() {
 
 function roomCardHTML(room) {
   const full = room.playerCount >= room.maxPlayers;
-  const statusClass = room.status === 'empty' ? 'empty' : room.canJoin ? 'open' : 'busy';
-  const names = room.names?.length ? room.names.map(esc).join('・') : '参加者なし';
-  const disabled = !room.canJoin || full;
+  const canReconnect = Boolean(roomToken(room.id))
+    && localStorage.getItem(ACTIVE_ROOM_KEY) === room.id;
+  const canEnter = canReconnect || (room.canJoin && !full);
+  const statusClass = room.status === 'playing' || room.status === 'finished'
+    ? 'busy'
+    : (room.playerCount > 0 ? 'open' : 'empty');
+  const names = room.names?.length ? room.names.map(esc).join('・') : 'なし';
+  const no = roomNo(room.id);
+  const joinLabel = canReconnect
+    ? '再接続'
+    : (canEnter ? '参加する' : (full ? '満員' : 'ゲーム中'));
+
   return `<article class="room-card ${statusClass}">
-    <div class="room-card-head"><div><span class="room-number">第${room.id}対局室</span><span class="room-status ${statusClass}">${esc(room.label)}</span></div><strong>${room.playerCount}/${room.maxPlayers}</strong></div>
-    <div class="room-members">${names}</div>
+    <div class="room-card-head"><div><span class="room-number">ROOM ${no}</span><span class="room-status ${statusClass}">${esc(roomStatusLabel(room))}</span></div><strong>${room.playerCount} / ${room.maxPlayers}人</strong></div>
+    <div class="room-members">参加者：${names}</div>
     <div class="room-meta">人間 ${room.humanCount}人　CPU ${room.cpuCount}人</div>
-    <div class="room-card-actions"><button class="btn ${disabled ? '' : 'primary'} join-room" data-room-id="${room.id}" ${disabled ? 'disabled' : ''}>${disabled ? (full ? '満員' : '対局中') : 'この部屋に入る'}</button><button class="btn ghost-danger compact reset-room" data-room-id="${room.id}">リセット</button></div>
+    <div class="room-card-actions"><button class="btn ${canEnter ? 'primary' : ''} join-room" data-room-id="${room.id}" ${canEnter ? '' : 'disabled'}>${joinLabel}</button><button class="btn ghost-danger compact reset-room" data-room-id="${room.id}">初期化</button></div>
   </article>`;
 }
 
 function topbarHTML() {
   const self = state.players.find((p) => p.id === state.selfId);
-  return `${connectionBanner()}<header class="topbar"><div><span class="room-title">第${state.roomId}対局室</span><span class="version-badge">${APP_VERSION}</span>${self?.isHost ? '<span class="badge gold">部屋主</span>' : ''}</div><div class="top-actions">
+  return `${connectionBanner()}<header class="topbar"><div><span class="room-title">ROOM ${roomNo(state.roomId)}</span><span class="version-badge">${APP_VERSION}</span>${self?.isHost ? '<span class="badge gold">部屋主</span>' : ''}</div><div class="top-actions">
     ${bgmControlHTML()}
     ${self?.isHost ? '<button class="icon-btn manage" id="roomManageBtn">部屋管理</button>' : ''}
     <button class="icon-btn desktop-url-btn" id="copyUrlBtn">URL</button>
@@ -1811,31 +1961,60 @@ function render() {
 
 async function resetRoomFromTitle(roomId) {
   const target = String(roomId);
-  if (!confirm(`第${target}対局室を完全リセットします。対局中の場合、参加者全員がタイトルへ戻ります。よろしいですか？`)) return;
+  const no = roomNo(target);
+  const ok = confirm(`ROOM ${no} を初期化しますか？`);
+  if (!ok) return;
+
   try {
     const result = await socket.resetRoom(target);
-    if (result?.summary) { const index = rooms.findIndex((room) => String(room.id) === target); if (index >= 0) rooms[index] = result.summary; updateLandingRoomGrid(); }
+    if (result?.room) {
+      const index = rooms.findIndex((room) => String(room.id) === target);
+      if (index >= 0) rooms[index] = result.room;
+      updateLandingRoomGrid();
+    }
+
     localStorage.removeItem(tokenKey(target));
     if (lastRoomId === target) {
-      localStorage.removeItem('td:lastRoom');
+      localStorage.removeItem(ACTIVE_ROOM_KEY);
+      localStorage.removeItem(ACTIVE_NAME_KEY);
       lastRoomId = '';
     }
+
     await socket.refreshLobby();
-    const resetRoom = rooms.find((room) => String(room.id) === target);
-    if (resetRoom && resetRoom.playerCount !== 0) throw new Error('リセット後も参加者が残っています。Cloudflare側をv5.7へ更新してください。');
-    showToast(`第${target}対局室を完全リセットしました。`, false);
+    showToast(`ROOM ${no} を初期化しました。`, false);
   } catch (error) {
-    showToast(error.message || '部屋をリセットできませんでした。');
+    showToast(error.message || 'ROOMを初期化できませんでした。');
   }
 }
 
-function joinRoom(roomId) {
-  name = document.querySelector('#nameInput')?.value.trim() || name || '名無し';
-  localStorage.setItem('td:name', name);
-  const token = roomToken(roomId);
-  emit('joinRoom', { roomId, name, token }, (result) => {
+async function joinRoom(roomId) {
+  const input = document.querySelector('#nameInput');
+  name = String(input?.value ?? name ?? '').trim().slice(0, 32);
+  if (!name) {
+    showToast('プレイヤー名を入力してください。');
+    input?.focus();
+    return;
+  }
+
+  sessionStorage.setItem(NAME_DRAFT_KEY, name);
+  const token = getToken(roomId);
+
+  try {
+    await checkRoomJoin(roomId, name, token);
+  } catch (error) {
+    showToast(error.message || 'ROOMへ参加できません。');
+    return;
+  }
+
+  socket.emit('joinRoom', { roomId, name, token }, (result) => {
+    if (!result?.ok) {
+      showToast(result?.error || 'ROOMへ参加できません。');
+      return;
+    }
     localStorage.setItem(tokenKey(result.roomId), result.token);
-    localStorage.setItem('td:lastRoom', result.roomId);
+    localStorage.setItem(ACTIVE_ROOM_KEY, result.roomId);
+    localStorage.setItem(ACTIVE_NAME_KEY, name);
+    lastRoomId = result.roomId;
   });
 }
 
@@ -1851,13 +2030,13 @@ function bind() {
   updateBgmControls();
   const nameInput = document.querySelector('#nameInput');
   if (nameInput) {
-    const saveName = (event) => {
+    const saveNameDraft = (event) => {
       name = event.target.value;
-      localStorage.setItem('td:name', name);
+      sessionStorage.setItem(NAME_DRAFT_KEY, name);
     };
-    nameInput.addEventListener('input', saveName);
-    nameInput.addEventListener('change', saveName);
-    nameInput.addEventListener('compositionend', saveName);
+    nameInput.addEventListener('input', saveNameDraft);
+    nameInput.addEventListener('change', saveNameDraft);
+    nameInput.addEventListener('compositionend', saveNameDraft);
     nameInput.addEventListener('pointerdown', (event) => event.stopPropagation());
     nameInput.addEventListener('click', (event) => event.stopPropagation());
   }
@@ -1917,6 +2096,20 @@ function bind() {
     else if (action === 'REVEAL') emit('revealTile', { tileId });
   }));
 }
+
+function resumeRoomConnection() {
+  if (!lastRoomId || !roomToken(lastRoomId)) return;
+  if (socket.ws?.readyState === WebSocket.OPEN || socket.connecting) return;
+  socket.connect(lastRoomId).catch((error) => {
+    connectionMessage = error.message || '再接続できませんでした。';
+    render();
+  });
+}
+
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') resumeRoomConnection();
+});
+window.addEventListener('online', resumeRoomConnection);
 
 console.info(`Tiger & Dragon ${APP_VERSION}`);
 document.documentElement.dataset.appVersion = APP_VERSION;

@@ -1,0 +1,80 @@
+タイガー＆ドラゴン
+共通化バージョン：v5.12
+基準：オンラインボドゲ共通化_実装規格_v4
+
+[ADAPTER]
+GAME_ID = tiger-dragon
+GAME_NAME = タイガー＆ドラゴン
+MAX_PLAYERS = 5
+WORKER_ORIGIN = https://tiger-dragon-server.naitoryo7110.workers.dev
+APP_VERSION = v5.12
+
+タイトル描画関数 = landingHTML()
+ROOM一覧描画関数 = roomCardHTML() / updateLandingRoomGrid()
+ROOM参加関数 = joinRoom()
+ゲーム開始関数 = saveSettingsThenStart() -> Worker startGame
+再接続処理 = TigerDragonSocket.connect() / socket.on('connect') / resumeRoomConnection()
+ROOM初期化処理 = resetRoomFromTitle() -> POST /reset-empty
+Worker側ROOM処理 = RoomDurableObject / GameRoom
+Worker側保存処理 = RoomDurableObject.persist()
+参加者配列 = GameRoom.players
+人間参加者 = GameRoom.humanPlayers()
+CPU参加者 = GameRoom.cpuPlayers()
+ゲーム状態 = GameRoom.status
+
+[CLIENT]
+ファイル：index.html
+
+共通固定値
+・GAME_ID / GAME_NAME / MAX_PLAYERS / WORKER_ORIGIN / APP_VERSION を定義
+・COMMON_MANAGER_URL は規格値を維持
+・COMMON_PLAYER_NAME_KEY = boardgamePlayerName
+・ROOM_IDS = room1 / room2 / room3 / room4
+・既存Worker URLは変更なし
+
+landingHTML() / roomCardHTML()
+・固定ROOM 1～4を表示
+・PCは4列
+・スマホは2列×2段
+・ROOM番号、人数、参加者名、待機中/ゲーム中/終了、参加/再接続、個別初期化を表示
+・各ROOM内の参加ボタン直下に個別「初期化」ボタンを配置
+・HOME / プレイ記録ボタンは追加しない
+
+共通プレイヤー名
+・commonSavedName() を追加
+・saveCommonNameOnActualStart() を追加
+・入力途中は sessionStorage の tiger-dragon-name-draft にだけ保存
+・ROOM参加時には boardgamePlayerName を保存しない
+・ゲーム開始状態 + gameSessionId を受信した時だけ boardgamePlayerName を保存
+
+joinRoom()
+・GAME_IDベースの再接続tokenを使用
+・WebSocket接続前に checkRoomJoin() を実行
+・空ROOMだけ共通管理Workerのホスト権限確認へ進む
+・既存ROOMはホスト権限なしでも参加可能
+
+resetRoomFromTitle()
+・ROOM単位の /reset-empty を使用
+・確認文「ROOM N を初期化しますか？」を表示
+・他ROOMは変更しない
+
+再接続
+・tokenKey(roomId) = tiger-dragon-online-token-roomN
+・ACTIVE_ROOM_KEY = tiger-dragon-online-room
+・ACTIVE_NAME_KEY = tiger-dragon-online-active-name
+・ページ再読込時に現在ROOMへ再接続
+・visibilitychange / online でタブ復帰・通信復帰時の再接続を追加
+
+共通化操作の二重送信防止
+・newActionId() を追加
+・updateSettings / addCpu / removePlayer / startGame / restartGame / resetMatch / hardReset に actionId を付与
+
+変更していないもの
+・ゲームルール
+・得点処理
+・CPU判断ロジック
+・戦場カード処理
+・ゲーム本編UI（共通化接続点以外）
+・BGM / 奥義効果音
+
+次回更新時は上記関数へ直接入ること。
